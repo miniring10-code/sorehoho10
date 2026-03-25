@@ -1,5 +1,7 @@
 import { useEffect } from 'react';
 import Head from 'next/head';
+import { db } from '../lib/firebase';
+import { ref, onValue, set, update } from 'firebase/database';
 
 export default function Home() {
   useEffect(() => {
@@ -171,6 +173,7 @@ export default function Home() {
       const date = document.getElementById('new-event-date').value;
       if (!name || !date) return alert('イベント名と日付を入力してください');
       state.events.push({ id: uid(), date, name });
+      saveToFirebase('/events', arrToObj(state.events));
       closeModal('event-add');
       document.getElementById('new-event-name').value = '';
       document.getElementById('new-event-date').value = '';
@@ -178,6 +181,7 @@ export default function Home() {
     }
     function deleteEvent(id) {
       state.events = state.events.filter(e => e.id !== id);
+      saveToFirebase('/events', arrToObj(state.events));
       renderCalendar(); renderEventList();
     }
 
@@ -219,13 +223,14 @@ export default function Home() {
     }
     function toggleTask(id) {
       const t = state.tasks.find(t => t.id === id);
-      if (t) { t.done = !t.done; renderTasks(); }
+      if (t) { t.done = !t.done; saveToFirebase('/tasks', arrToObj(state.tasks)); renderTasks(); }
     }
     function addTask() {
       const name = document.getElementById('new-task-name').value.trim();
       const cat  = document.getElementById('new-task-cat').value;
       if (!name) return alert('タスク名を入力してください');
       state.tasks.push({ id: uid(), name, cat, done: false });
+      saveToFirebase('/tasks', arrToObj(state.tasks));
       closeModal('task-add');
       document.getElementById('new-task-name').value = '';
       renderTasks();
@@ -267,6 +272,7 @@ export default function Home() {
       const cat   = document.getElementById('new-news-cat').value;
       if (!title) return alert('タイトルを入力してください');
       state.news.unshift({ id: uid(), title, body, cat, time: 'たった今', isNew: true });
+      saveToFirebase('/news', arrToObj(state.news));
       closeModal('news-add');
       document.getElementById('new-news-title').value = '';
       document.getElementById('new-news-body').value = '';
@@ -314,10 +320,12 @@ export default function Home() {
     }
     function setAttendance(memberId, value) {
       state.attendance[`${state.currentAttendEvent}-${memberId}`] = value;
+      saveToFirebase('/attendance', state.attendance);
       renderAttendance();
     }
     function saveMemo(memberId, value) {
       state.memos[`${state.currentAttendEvent}-${memberId}`] = value;
+      saveToFirebase('/memos', state.memos);
     }
 
     // ===== SETLIST =====
@@ -367,7 +375,10 @@ export default function Home() {
       });
       renderNotes(songId);
     }
-    function savePart(songId, memberId, value) { state.songParts[`${songId}-${memberId}`] = value; }
+    function savePart(songId, memberId, value) {
+      state.songParts[`${songId}-${memberId}`] = value;
+      saveToFirebase('/songParts', state.songParts);
+    }
     function renderNotes(songId) {
       const container = document.getElementById('notes-list');
       container.innerHTML = '';
@@ -384,11 +395,13 @@ export default function Home() {
       if (!text) return;
       if (!state.songNotes[state.currentSongId]) state.songNotes[state.currentSongId] = [];
       state.songNotes[state.currentSongId].push(text);
+      saveToFirebase('/songNotes', state.songNotes);
       input.value = '';
       renderNotes(state.currentSongId);
     }
     function deleteNote(songId, idx) {
       state.songNotes[songId].splice(idx, 1);
+      saveToFirebase('/songNotes', state.songNotes);
       renderNotes(songId);
     }
 
@@ -501,10 +514,85 @@ export default function Home() {
         const e = state.attendEvents.find(e => e.id === parseInt(inp.dataset.attendDate));
         if (e) e.date = inp.value.trim() || e.date;
       });
+      // Firebaseに全データを保存
+      saveAllToFirebase();
       renderCalendar(); renderEventList(); renderTasks(); renderTaskChips();
       renderNews(); renderAttendEventTabs(); renderAttendance(); renderSetlist(); renderSettings();
       alert('変更を適用しました ✓');
     }
+
+    // ===== FIREBASE =====
+    function arrToObj(arr) {
+      const obj = {};
+      arr.forEach(item => { obj[String(item.id)] = item; });
+      return obj;
+    }
+
+    function saveToFirebase(path, data) {
+      if (!db) return;
+      update(ref(db, path), data);
+    }
+
+    function saveAllToFirebase() {
+      set(ref(db, '/'), {
+        attendance:  state.attendance,
+        memos:       state.memos,
+        songParts:   state.songParts,
+        songNotes:   state.songNotes,
+        events:      arrToObj(state.events),
+        tasks:       arrToObj(state.tasks),
+        news:        arrToObj(state.news),
+        members:     arrToObj(state.members),
+        songs:       arrToObj(state.songs),
+        attendEvents: arrToObj(state.attendEvents),
+      });
+    }
+
+    if (!db) return; // SSR環境では実行しない
+    const dbRef = ref(db, '/');
+    const unsubscribe = onValue(dbRef, (snapshot) => {
+      const data = snapshot.val();
+      if (!data) {
+        // 初回：デフォルトデータをFirebaseに書き込む
+        saveAllToFirebase();
+        return;
+      }
+      // Firebaseのデータでstateを更新
+      if (data.attendance)   state.attendance   = data.attendance;
+      if (data.memos)        state.memos        = data.memos;
+      if (data.songParts)    state.songParts    = data.songParts;
+      if (data.songNotes) {
+        state.songNotes = {};
+        Object.entries(data.songNotes).forEach(([sid, notesObj]) => {
+          state.songNotes[Number(sid)] = Array.isArray(notesObj) ? notesObj : Object.values(notesObj);
+        });
+      }
+      if (data.events)       state.events       = Object.values(data.events);
+      if (data.tasks)        state.tasks        = Object.values(data.tasks);
+      if (data.news)         state.news         = Object.values(data.news);
+      if (data.members)      state.members      = Object.values(data.members);
+      if (data.songs)        state.songs        = Object.values(data.songs);
+      if (data.attendEvents) state.attendEvents = Object.values(data.attendEvents);
+
+      // nextIdをFirebaseの最大IDより大きくする
+      const allIds = [
+        ...state.events.map(e => e.id),
+        ...state.tasks.map(t => t.id),
+        ...state.news.map(n => n.id),
+        ...state.members.map(m => m.id),
+        ...state.songs.map(s => s.id),
+        ...state.attendEvents.map(e => e.id),
+      ].filter(id => typeof id === 'number');
+      if (allIds.length > 0) nextId = Math.max(...allIds) + 1;
+
+      // 画面を再描画
+      renderCalendar(); renderEventList();
+      renderTaskChips(); renderTasks();
+      renderNews();
+      renderAttendEventTabs(); renderAttendance();
+      renderSetlist();
+      renderSettings();
+    });
 
     // ===== EXPOSE TO WINDOW =====
     window.switchTab       = switchTab;
@@ -565,6 +653,7 @@ export default function Home() {
 
     // ===== CLEANUP =====
     return () => {
+      if (typeof unsubscribe === 'function') unsubscribe(); // Firebaseリスナーを解除
       const fns = [
         'switchTab','openModal','closeModal','applyTheme','openThemePanel','closeThemePanel',
         'addEvent','deleteEvent','toggleTask','addTask','toggleAccordion','addNews',
