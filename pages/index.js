@@ -181,12 +181,71 @@ export default function Home() {
 
     const TASK_CATS = ['all','sns','会場','衣装','クリエイティブ','現役連絡','ロゴ','kv','演出','音源','チケット','グッズ','お金','スタジオ予約','スケジュール'];
 
+    // ===== HOHO MASCOT =====
+    function updateHohoMessage() {
+      const msgEl = document.getElementById('hoho-message');
+      if (!msgEl) return;
+      const now = new Date();
+      let msg = '';
+      switch (state.currentTab) {
+        case 'schedule': {
+          const upcoming = state.events
+            .filter(e => new Date(e.date + 'T00:00:00') >= now)
+            .sort((a, b) => new Date(a.date) - new Date(b.date));
+          if (upcoming.length > 0) {
+            const next = upcoming[0];
+            const d = new Date(next.date + 'T00:00:00');
+            msg = `次の予定は「${next.name}」${d.getMonth()+1}月${d.getDate()}日だよ！`;
+          } else {
+            msg = 'スケジュールは今のところ空だよ！';
+          }
+          break;
+        }
+        case 'tasks': {
+          const incomplete = state.tasks.filter(t => !t.done);
+          if (incomplete.length === 0) {
+            msg = 'タスク全部終わってる！すごいね！✨';
+          } else {
+            msg = `タスクが${incomplete.length}個残ってるよ！`;
+          }
+          break;
+        }
+        case 'news': {
+          const newCount = state.news.filter(n => n.isNew).length;
+          if (newCount > 0) {
+            msg = `新しいお知らせが${newCount}件あるよ！`;
+          } else {
+            msg = 'お知らせをチェックしてね！';
+          }
+          break;
+        }
+        case 'attend': {
+          const eid = state.currentAttendEvent;
+          const present = state.members.filter(m => state.attendance[`${eid}-${m.id}`] === 'present').length;
+          msg = `${present}人が参加予定だよ！`;
+          break;
+        }
+        case 'setlist': {
+          msg = `全部で${state.songs.length}曲あるよ！がんばろう！🎵`;
+          break;
+        }
+        case 'settings': {
+          msg = '設定はここでできるよ！管理よろしくね！';
+          break;
+        }
+        default:
+          msg = 'みんなのこと応援してるよ！✿';
+      }
+      msgEl.textContent = msg;
+    }
+
     // ===== TAB =====
     function switchTab(tabId) {
       state.currentTab = tabId;
       document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
       document.getElementById('tab-' + tabId).classList.add('active');
       document.querySelectorAll('.tab-btn').forEach(b => b.classList.toggle('active', b.dataset.tab === tabId));
+      updateHohoMessage();
     }
 
     // ===== MODAL =====
@@ -850,6 +909,7 @@ export default function Home() {
       renderSettings();
       startCountdown();
       applyAdminMode();
+      updateHohoMessage();
     });
 
     // ===== EXPOSE TO WINDOW =====
@@ -911,6 +971,7 @@ export default function Home() {
     renderSettings();
     startCountdown();
     applyAdminMode();
+    updateHohoMessage();
 
     // ===== CLEANUP =====
     return () => {
@@ -1107,6 +1168,14 @@ export default function Home() {
           </section>
 
         </main>
+      </div>
+
+      {/* HOHO MASCOT */}
+      <div className="hoho-mascot" id="hoho-mascot">
+        <div className="hoho-bubble">
+          <span id="hoho-message">みんなのこと応援してるよ！✿</span>
+        </div>
+        <img src="/hoho.png" alt="ほほちゃん" className="hoho-img" />
       </div>
 
       {/* SETLIST DETAIL SLIDE PANEL */}
