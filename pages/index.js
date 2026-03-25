@@ -174,6 +174,8 @@ export default function Home() {
       memos: {},
       songParts: {},
       songNotes: {},
+      songLeaders: {},    // { songId: ['name1','name2','name3'] }
+      songPerformers: {}, // { songId: [memberId, ...] }
       currentSongId: null,
     };
 
@@ -473,6 +475,10 @@ export default function Home() {
           header.textContent = song.section;
           ol.appendChild(header);
         }
+        const leaders = state.songLeaders[song.id];
+        const leadersText = leaders && leaders.filter(l=>l).length > 0
+          ? `<span class="song-leaders">担当: ${leaders.filter(l=>l).join(' · ')}</span>`
+          : '';
         const li = document.createElement('li');
         li.className = 'setlist-item';
         li.innerHTML = `
@@ -480,6 +486,7 @@ export default function Home() {
           <div class="song-info">
             <span class="song-title">${song.title}</span>
             <span class="song-artist">${song.artist}</span>
+            ${leadersText}
           </div>
           <span class="chevron">›</span>
         `;
@@ -502,9 +509,63 @@ export default function Home() {
       panel.addEventListener('transitionend', () => { panel.classList.add('hidden'); }, { once: true });
     }
     function renderSongDetail(songId) {
+      renderSongLeaders(songId);
+      renderPerformers(songId);
+      renderParts(songId);
+      renderNotes(songId);
+    }
+    function renderSongLeaders(songId) {
+      const container = document.getElementById('leaders-row');
+      const leaders = state.songLeaders[songId] || ['', '', ''];
+      container.innerHTML = '';
+      for (let i = 0; i < 3; i++) {
+        const wrap = document.createElement('div');
+        wrap.className = 'leader-field';
+        const label = document.createElement('span');
+        label.className = 'leader-label';
+        label.textContent = `担当${i+1}`;
+        const sel = document.createElement('select');
+        sel.className = 'leader-select';
+        sel.innerHTML = '<option value="">（未設定）</option>' +
+          state.members.map(m => `<option value="${m.name}" ${(leaders[i]||'')=== m.name?'selected':''}>${m.name}</option>`).join('');
+        const idx = i;
+        sel.onchange = () => window.saveLeader(songId, idx, sel.value);
+        wrap.appendChild(label);
+        wrap.appendChild(sel);
+        container.appendChild(wrap);
+      }
+    }
+    function renderPerformers(songId) {
+      const container = document.getElementById('performers-toggle');
+      const performers = state.songPerformers[songId]; // undefined = all
+      container.innerHTML = '';
+      const gens = [...new Set(state.members.map(m => m.generation))].sort((a,b)=>a-b);
+      gens.forEach(gen => {
+        const genMembers = state.members.filter(m => m.generation === gen);
+        const genDiv = document.createElement('div');
+        genDiv.className = 'performer-gen-row';
+        const genLabel = document.createElement('span');
+        genLabel.className = 'performer-gen-label';
+        genLabel.textContent = `${gen}期`;
+        genDiv.appendChild(genLabel);
+        genMembers.forEach(m => {
+          const isSelected = !performers || performers.includes(m.id);
+          const label = document.createElement('label');
+          label.className = 'performer-check' + (isSelected ? ' selected' : '');
+          label.innerHTML = `<input type="checkbox" ${isSelected ? 'checked' : ''} onchange="window.togglePerformer(${songId}, ${m.id})" /> ${m.name}`;
+          genDiv.appendChild(label);
+        });
+        container.appendChild(genDiv);
+      });
+    }
+    function renderParts(songId) {
       const tbody = document.getElementById('parts-table-body');
       tbody.innerHTML = '';
-      state.members.forEach(m => {
+      const performers = state.songPerformers[songId];
+      const activeMembers = performers
+        ? state.members.filter(m => performers.includes(m.id))
+        : state.members;
+      activeMembers.forEach(m => {
         const key = `${songId}-${m.id}`;
         const tr = document.createElement('tr');
         tr.innerHTML = `
@@ -513,11 +574,29 @@ export default function Home() {
         `;
         tbody.appendChild(tr);
       });
-      renderNotes(songId);
     }
     function savePart(songId, memberId, value) {
       state.songParts[`${songId}-${memberId}`] = value;
       saveToFirebase('/songParts', state.songParts);
+    }
+    function saveLeader(songId, idx, value) {
+      if (!state.songLeaders[songId]) state.songLeaders[songId] = ['', '', ''];
+      state.songLeaders[songId][idx] = value;
+      saveToFirebase('/songLeaders', state.songLeaders);
+      renderSetlist();
+    }
+    function togglePerformer(songId, memberId) {
+      let performers = state.songPerformers[songId];
+      if (!performers) performers = state.members.map(m => m.id);
+      if (performers.includes(memberId)) {
+        performers = performers.filter(id => id !== memberId);
+      } else {
+        performers = [...performers, memberId];
+      }
+      state.songPerformers[songId] = performers;
+      saveToFirebase('/songPerformers', state.songPerformers);
+      renderParts(songId);
+      renderPerformers(songId);
     }
     function renderNotes(songId) {
       const container = document.getElementById('notes-list');
@@ -696,6 +775,8 @@ export default function Home() {
         memos:           state.memos,
         songParts:       state.songParts,
         songNotes:       state.songNotes,
+        songLeaders:     state.songLeaders,
+        songPerformers:  state.songPerformers,
         events:          arrToObj(state.events),
         tasks:           arrToObj(state.tasks),
         news:            arrToObj(state.news),
@@ -726,6 +807,18 @@ export default function Home() {
         state.songNotes = {};
         Object.entries(data.songNotes).forEach(([sid, notesObj]) => {
           state.songNotes[Number(sid)] = Array.isArray(notesObj) ? notesObj : Object.values(notesObj);
+        });
+      }
+      if (data.songLeaders) {
+        state.songLeaders = {};
+        Object.entries(data.songLeaders).forEach(([sid, val]) => {
+          state.songLeaders[Number(sid)] = Array.isArray(val) ? val : Object.values(val);
+        });
+      }
+      if (data.songPerformers) {
+        state.songPerformers = {};
+        Object.entries(data.songPerformers).forEach(([sid, val]) => {
+          state.songPerformers[Number(sid)] = Array.isArray(val) ? val : Object.values(val);
         });
       }
       if (data.events)          state.events          = Object.values(data.events).map(e => ({ time: '', memo: '', ...e }));
@@ -776,6 +869,8 @@ export default function Home() {
     window.openSongDetail     = openSongDetail;
     window.closeSongDetail    = closeSongDetail;
     window.savePart           = savePart;
+    window.saveLeader         = saveLeader;
+    window.togglePerformer    = togglePerformer;
     window.addNote            = addNote;
     window.deleteNote         = deleteNote;
     window.applySettings      = applySettings;
@@ -827,6 +922,7 @@ export default function Home() {
         'setAttendance','saveMemo','openSongDetail','closeSongDetail','savePart',
         'addNote','deleteNote','applySettings','addMemberRow','deleteMember',
         'moveSong','addSongRow','deleteSong','addAttendEventRow','deleteAttendEvent',
+        'saveLeader','togglePerformer',
       ];
       fns.forEach(fn => { delete window[fn]; });
     };
@@ -1018,6 +1114,14 @@ export default function Home() {
         <div className="slide-header">
           <button id="btn-back-setlist" onClick={() => window.closeSongDetail()}>‹ 戻る</button>
           <span id="detail-song-title"></span>
+        </div>
+        <div className="card">
+          <div className="card-title">曲責任者</div>
+          <div id="leaders-row" className="leaders-row"></div>
+        </div>
+        <div className="card">
+          <div className="card-title">出演メンバー</div>
+          <div id="performers-toggle" className="performers-toggle"></div>
         </div>
         <div className="card">
           <div className="card-title">パート・フォーメーション</div>
