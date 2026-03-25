@@ -1301,6 +1301,185 @@ html, body {
 }
 .theme-card.selected .theme-check { display: block; }
 
+/* ===== COUNTDOWN ===== */
+.countdown-section {
+  background: var(--header-bg);
+  padding: 20px 16px 16px;
+  text-align: center;
+}
+.countdown-title {
+  color: rgba(255,255,255,0.9);
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  margin-bottom: 10px;
+}
+.countdown-timer {
+  display: flex;
+  justify-content: center;
+  align-items: flex-end;
+  gap: 4px;
+}
+.countdown-unit {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+.countdown-num {
+  color: #ffffff;
+  font-size: 44px;
+  font-weight: 900;
+  line-height: 1;
+  min-width: 52px;
+  text-align: center;
+  text-shadow: 0 2px 10px rgba(0,0,0,0.18);
+}
+.countdown-unit small {
+  color: rgba(255,255,255,0.8);
+  font-size: 11px;
+  margin-top: 3px;
+  font-weight: 600;
+}
+.countdown-sep {
+  color: rgba(255,255,255,0.7);
+  font-size: 34px;
+  font-weight: 900;
+  padding: 0 2px;
+  margin-bottom: 12px;
+}
+.countdown-date {
+  color: rgba(255,255,255,0.75);
+  font-size: 12px;
+  margin-top: 10px;
+  font-weight: 600;
+}
+.countdown-message {
+  color: #ffffff;
+  font-size: 20px;
+  font-weight: 900;
+  margin-top: 8px;
+  letter-spacing: 0.05em;
+}
+
+/* ===== ADMIN ===== */
+.admin-lock-btn {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  background: rgba(255,255,255,0.2);
+  border: 1.5px solid rgba(255,255,255,0.4);
+  border-radius: 20px;
+  padding: 4px 10px;
+  color: white;
+  cursor: pointer;
+  font-size: 13px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  line-height: 1.4;
+}
+.admin-lock-btn.active {
+  background: rgba(255,255,255,0.35);
+}
+.admin-badge {
+  font-size: 11px;
+  font-weight: 800;
+}
+.admin-only { display: none; }
+.app-admin .admin-only { display: revert; }
+#tab-settings.admin-only { display: none; }
+.app-admin #tab-settings.admin-only { display: block; }
+
+/* ===== CALENDAR: SELECTED DATE ===== */
+td.selected-day {
+  background: var(--accent) !important;
+  border-radius: 8px;
+}
+td.selected-day .day-num {
+  color: white !important;
+  font-weight: 800;
+}
+.date-events {
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1.5px solid var(--border);
+}
+.date-events-label {
+  font-size: 13px;
+  font-weight: 800;
+  color: var(--text-sub);
+  margin-bottom: 8px;
+}
+.date-events-empty {
+  font-size: 13px;
+  color: var(--text-muted);
+  padding: 4px 0;
+}
+.date-event-item {
+  padding: 7px 0;
+  border-bottom: 1px solid var(--border);
+}
+.date-event-item:last-child { border-bottom: none; }
+.date-event-name {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text);
+}
+.date-event-time {
+  font-size: 12px;
+  color: var(--text-sub);
+  margin-left: 8px;
+  font-weight: 600;
+}
+.date-event-memo {
+  font-size: 12px;
+  color: var(--text-muted);
+  margin-top: 3px;
+}
+
+/* ===== EVENT LIST: TIME & MEMO ===== */
+.event-info {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.event-time {
+  font-size: 12px;
+  color: var(--text-sub);
+  font-weight: 600;
+}
+.event-memo {
+  font-size: 11px;
+  color: var(--text-muted);
+}
+.event-actions { display: flex; align-items: center; }
+
+/* ===== SETLIST SECTION HEADER ===== */
+.song-section-header {
+  font-size: 11px;
+  font-weight: 800;
+  color: var(--accent);
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  padding: 10px 0 4px;
+  border-bottom: 2px solid var(--accent-light);
+  margin: 8px 0 4px;
+}
+
+/* ===== GENERATION BADGE ===== */
+.gen-badge {
+  display: inline-block;
+  font-size: 10px;
+  background: var(--accent-light);
+  color: var(--accent);
+  border-radius: 8px;
+  padding: 1px 6px;
+  margin-right: 5px;
+  font-weight: 800;
+  vertical-align: middle;
+}
+
 /* ===== UTILITY ===== */
 .hidden { display: none !important; }
 .mt8 { margin-top: 8px; }

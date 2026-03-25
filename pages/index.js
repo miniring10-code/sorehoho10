@@ -5,32 +5,82 @@ import { ref, onValue, set, update } from 'firebase/database';
 
 export default function Home() {
   useEffect(() => {
-    // ===== THEME SYSTEM =====
-    const THEMES = [
-      'theme-kawaii','theme-pastel','theme-y2k','theme-fairy',
-      'theme-iceblue','theme-rainy','theme-pearl',
-      'theme-rose','theme-sage','theme-midnight'
-    ];
-    let currentTheme = localStorage.getItem('sorehoho-theme') || 'theme-iceblue';
+    // ===== THEME (fixed: iceblue) =====
+    document.body.classList.add('theme-iceblue');
 
-    function applyTheme(name) {
-      THEMES.forEach(t => document.body.classList.remove(t));
-      document.body.classList.add(name);
-      currentTheme = name;
-      localStorage.setItem('sorehoho-theme', name);
-      document.querySelectorAll('.theme-card').forEach(card => {
-        card.classList.toggle('selected', card.dataset.theme === name);
-      });
+    // ===== ADMIN MODE =====
+    let isAdmin = sessionStorage.getItem('sorehoho-admin') === 'true';
+    function applyAdminMode() {
+      if (isAdmin) {
+        document.body.classList.add('app-admin');
+        document.getElementById('admin-btn').classList.add('active');
+        document.getElementById('admin-btn').innerHTML = '🔒 <span class="admin-badge">管理者</span>';
+      } else {
+        document.body.classList.remove('app-admin');
+        document.getElementById('admin-btn').classList.remove('active');
+        document.getElementById('admin-btn').innerHTML = '🔓';
+      }
+    }
+    function toggleAdmin() {
+      if (isAdmin) {
+        isAdmin = false;
+        sessionStorage.removeItem('sorehoho-admin');
+        applyAdminMode();
+      } else {
+        openModal('pin');
+      }
+    }
+    function submitPin() {
+      const input = document.getElementById('pin-input').value.trim();
+      if (input === state.adminPin) {
+        isAdmin = true;
+        sessionStorage.setItem('sorehoho-admin', 'true');
+        applyAdminMode();
+        closeModal('pin');
+        document.getElementById('pin-input').value = '';
+      } else {
+        alert('PINが違います');
+      }
     }
 
-    function openThemePanel() {
-      document.getElementById('theme-panel-overlay').classList.remove('hidden');
-      document.querySelectorAll('.theme-card').forEach(card => {
-        card.classList.toggle('selected', card.dataset.theme === currentTheme);
-      });
-    }
-    function closeThemePanel() {
-      document.getElementById('theme-panel-overlay').classList.add('hidden');
+    // ===== COUNTDOWN =====
+    let countdownInterval = null;
+    function startCountdown() {
+      if (countdownInterval) clearInterval(countdownInterval);
+      function tick() {
+        const now = new Date();
+        const target = new Date(state.performanceDate + 'T00:00:00');
+        const diff = target - now;
+        const labelEl = document.getElementById('countdown-label');
+        const timerEl = document.getElementById('countdown-timer');
+        const msgEl = document.getElementById('countdown-message');
+        const dateEl = document.getElementById('countdown-date');
+        if (!labelEl) return;
+        const parts = state.performanceDate.split('-');
+        if (dateEl) dateEl.textContent = `公演日: ${parseInt(parts[0])}年${parseInt(parts[1])}月${parseInt(parts[2])}日`;
+        if (diff <= 0) {
+          if (labelEl) labelEl.textContent = '';
+          if (timerEl) timerEl.style.display = 'none';
+          if (msgEl) msgEl.textContent = '✿ 公演当日！ ✿';
+          msgEl.style.display = 'block';
+        } else {
+          const d = Math.floor(diff / (1000 * 60 * 60 * 24));
+          const h = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+          const m = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+          const s = Math.floor((diff % (1000 * 60)) / 1000);
+          if (labelEl) labelEl.textContent = '公演まであと';
+          if (timerEl) {
+            timerEl.style.display = 'flex';
+            document.getElementById('cd-days').textContent   = String(d);
+            document.getElementById('cd-hours').textContent  = String(h).padStart(2,'0');
+            document.getElementById('cd-mins').textContent   = String(m).padStart(2,'0');
+            document.getElementById('cd-secs').textContent   = String(s).padStart(2,'0');
+          }
+          if (msgEl) msgEl.style.display = 'none';
+        }
+      }
+      tick();
+      countdownInterval = setInterval(tick, 1000);
     }
 
     // ===== STATE =====
@@ -40,26 +90,62 @@ export default function Home() {
     const state = {
       currentTab: 'schedule',
       currentMonth: new Date(2025, 10, 1),
+      selectedDate: null,
+      performanceDate: '2025-11-23',
+      adminPin: '1010',
       members: [
-        { id: 1, name: 'あいか', isLocal: false },
-        { id: 2, name: 'なつみ', isLocal: true  },
-        { id: 3, name: 'ゆうな', isLocal: false },
-        { id: 4, name: 'りな',   isLocal: true  },
-        { id: 5, name: 'さな',   isLocal: false },
+        { id: 1,  name: 'りーな',   generation: 1, isLocal: false },
+        { id: 2,  name: 'ゆりまる', generation: 1, isLocal: false },
+        { id: 3,  name: 'さわ',     generation: 1, isLocal: false },
+        { id: 4,  name: 'みかめろ', generation: 2, isLocal: false },
+        { id: 5,  name: 'まり',     generation: 2, isLocal: false },
+        { id: 6,  name: 'みさき',   generation: 2, isLocal: false },
+        { id: 7,  name: 'あっきぃ', generation: 3, isLocal: false },
+        { id: 8,  name: 'もえ',     generation: 3, isLocal: false },
+        { id: 9,  name: 'みく',     generation: 4, isLocal: false },
+        { id: 10, name: 'あや',     generation: 5, isLocal: false },
+        { id: 11, name: 'おりざ',   generation: 5, isLocal: false },
+        { id: 12, name: 'にゃん',   generation: 5, isLocal: false },
+        { id: 13, name: 'りんりん', generation: 5, isLocal: false },
+        { id: 14, name: 'さな',     generation: 5, isLocal: false },
+        { id: 15, name: 'カナメ',   generation: 5, isLocal: false },
+        { id: 16, name: 'やなぎ',   generation: 5, isLocal: false },
+        { id: 17, name: 'ほの',     generation: 5, isLocal: false },
+        { id: 18, name: 'ゆいまる', generation: 6, isLocal: false },
+        { id: 19, name: 'すずめ',   generation: 6, isLocal: false },
+        { id: 20, name: 'あいら',   generation: 7, isLocal: false },
+        { id: 21, name: 'みづき',   generation: 7, isLocal: false },
+        { id: 22, name: 'みゅう',   generation: 8, isLocal: false },
       ],
       songs: [
-        { id: 1, title: 'Supernova',  artist: 'aespa'    },
-        { id: 2, title: 'Magnetic',   artist: 'ILLIT'    },
-        { id: 3, title: 'Whiplash',   artist: 'aespa'    },
-        { id: 4, title: 'How Sweet',  artist: 'NewJeans' },
-        { id: 5, title: 'Armageddon', artist: 'aespa'    },
+        { id: 1,  title: 'PARTYが始まるよ',       artist: 'AKB48',            section: 'OP' },
+        { id: 2,  title: '超めでたいソング',       artist: 'FRUITS ZIPPER',    section: 'OP' },
+        { id: 3,  title: 'パレオはエメラルド',     artist: 'SKE48',            section: 'OP' },
+        { id: 4,  title: '倍々FIGHT!',             artist: 'CANDY TUNE',       section: 'わき曲' },
+        { id: 5,  title: '盛れ!ミ・アモーレ',     artist: 'Juice=Juice',       section: 'わき曲' },
+        { id: 6,  title: 'SHOUT',                  artist: '真っ白なキャンバス', section: 'わき曲' },
+        { id: 7,  title: 'ガールズルール',         artist: '乃木坂46',         section: '既存' },
+        { id: 8,  title: 'Cheeky Dreamer',         artist: 'Cheeky Parade',    section: '既存' },
+        { id: 9,  title: 'バンドワゴン',           artist: 'ラストアイドル',   section: '既存' },
+        { id: 10, title: '僕らはここにいる',       artist: 'ベイビーレイズJAPAN', section: '既存' },
+        { id: 11, title: 'サヨナラの意味',         artist: '乃木坂46',         section: '既存' },
+        { id: 12, title: 'Fantastic Illusion',     artist: 'i☆Ris',            section: '既存' },
+        { id: 13, title: '疾走Dreamer',            artist: 'JAMS',             section: '既存' },
+        { id: 14, title: 'NEW ERA PUNCH',          artist: 'JAMS',             section: '既存' },
+        { id: 15, title: 'まほろばアスタリスク?', artist: '≠ME',              section: '既存' },
+        { id: 16, title: 'とくべチュ、して',       artist: '?',                section: '既存' },
+        { id: 17, title: 'A INNOCENCE',            artist: 'ZOC',              section: 'ラスト' },
+        { id: 18, title: '=LOVE',                  artist: '=LOVE',            section: 'ラスト' },
+        { id: 19, title: '名残り桜',               artist: 'AKB48',            section: 'ラスト' },
+        { id: 20, title: 'YOZORA',                 artist: 'アイドルカレッジ', section: 'アンコール' },
+        { id: 21, title: '47の素敵な街へ',         artist: 'AKB48',            section: 'アンコール' },
       ],
       events: [
-        { id: 1, date: '2025-11-03', name: '振り付け練習' },
-        { id: 2, date: '2025-11-08', name: '衣装合わせ'   },
-        { id: 3, date: '2025-11-16', name: '通し練習'     },
-        { id: 4, date: '2025-11-22', name: 'ゲネプロ'     },
-        { id: 5, date: '2025-11-23', name: '★本番公演★'  },
+        { id: 1, date: '2025-11-03', name: '振り付け練習', time: '', memo: '' },
+        { id: 2, date: '2025-11-08', name: '衣装合わせ',   time: '', memo: '' },
+        { id: 3, date: '2025-11-16', name: '通し練習',     time: '', memo: '' },
+        { id: 4, date: '2025-11-22', name: 'ゲネプロ',     time: '', memo: '' },
+        { id: 5, date: '2025-11-23', name: '★本番公演★',  time: '15:00', memo: '' },
       ],
       tasks: [
         { id: 10, name: '衣装発注確認',           cat: '衣装',       done: false },
@@ -141,12 +227,50 @@ export default function Home() {
             if (today.getFullYear()===year && today.getMonth()===month && today.getDate()===d) {
               td.classList.add('today');
             }
+            if (state.selectedDate === dateStr) {
+              td.classList.add('selected-day');
+            }
+            td.addEventListener('click', () => {
+              state.selectedDate = state.selectedDate === dateStr ? null : dateStr;
+              renderCalendar();
+              renderDateEvents();
+            });
           } else {
             td.classList.add('other-month');
           }
           tr.appendChild(td);
         }
         tbody.appendChild(tr);
+      }
+      renderDateEvents();
+    }
+
+    function renderDateEvents() {
+      const container = document.getElementById('date-events-panel');
+      if (!container) return;
+      if (!state.selectedDate) {
+        container.classList.add('hidden');
+        return;
+      }
+      container.classList.remove('hidden');
+      const parts = state.selectedDate.split('-');
+      const label = `${parseInt(parts[1])}月${parseInt(parts[2])}日の予定`;
+      document.getElementById('date-events-label').textContent = label;
+      const list = document.getElementById('date-events-list');
+      list.innerHTML = '';
+      const dayEvents = state.events.filter(e => e.date === state.selectedDate).sort((a,b) => (a.time||'').localeCompare(b.time||''));
+      if (dayEvents.length === 0) {
+        list.innerHTML = '<div class="date-events-empty">予定なし</div>';
+      } else {
+        dayEvents.forEach(ev => {
+          const div = document.createElement('div');
+          div.className = 'date-event-item';
+          div.innerHTML = `
+            <div><span class="date-event-name">${ev.name}</span>${ev.time ? `<span class="date-event-time">${ev.time}</span>` : ''}</div>
+            ${ev.memo ? `<div class="date-event-memo">${ev.memo}</div>` : ''}
+          `;
+          list.appendChild(div);
+        });
       }
     }
 
@@ -161,8 +285,12 @@ export default function Home() {
         const dl = `${parseInt(parts[1])}/${parseInt(parts[2])}`;
         li.innerHTML = `
           <span class="event-date">${dl}</span>
-          <span class="event-name">${ev.name}</span>
-          <div class="event-actions"><button class="btn-icon" onclick="window.deleteEvent(${ev.id})">🗑</button></div>
+          <div class="event-info">
+            <span class="event-name">${ev.name}</span>
+            ${ev.time ? `<span class="event-time">${ev.time}</span>` : ''}
+            ${ev.memo ? `<span class="event-memo">${ev.memo}</span>` : ''}
+          </div>
+          <div class="event-actions admin-only"><button class="btn-icon" onclick="window.deleteEvent(${ev.id})">🗑</button></div>
         `;
         ul.appendChild(li);
       });
@@ -171,12 +299,16 @@ export default function Home() {
     function addEvent() {
       const name = document.getElementById('new-event-name').value.trim();
       const date = document.getElementById('new-event-date').value;
+      const time = document.getElementById('new-event-time').value.trim();
+      const memo = document.getElementById('new-event-memo').value.trim();
       if (!name || !date) return alert('イベント名と日付を入力してください');
-      state.events.push({ id: uid(), date, name });
+      state.events.push({ id: uid(), date, name, time: time || '', memo: memo || '' });
       saveToFirebase('/events', arrToObj(state.events));
       closeModal('event-add');
       document.getElementById('new-event-name').value = '';
       document.getElementById('new-event-date').value = '';
+      document.getElementById('new-event-time').value = '';
+      document.getElementById('new-event-memo').value = '';
       renderCalendar(); renderEventList();
     }
     function deleteEvent(id) {
@@ -306,7 +438,7 @@ export default function Home() {
         div.className = 'attend-row';
         div.innerHTML = `
           <div class="attend-row-top">
-            <span class="member-name">${m.name}${m.isLocal ? '<span class="local-badge">地方</span>' : ''}</span>
+            <span class="member-name"><span class="gen-badge">${m.generation || ''}期</span>${m.name}${m.isLocal ? '<span class="local-badge">地方</span>' : ''}</span>
             <div class="attend-btns">
               <button class="attend-btn ${cur==='present'?'active-present':''}" onclick="window.setAttendance(${m.id},'present')">○</button>
               <button class="attend-btn ${cur==='maybe'  ?'active-maybe'  :''}" onclick="window.setAttendance(${m.id},'maybe')">△</button>
@@ -332,7 +464,15 @@ export default function Home() {
     function renderSetlist() {
       const ol = document.getElementById('setlist-list');
       ol.innerHTML = '';
+      let lastSection = null;
       state.songs.forEach((song, idx) => {
+        if (song.section && song.section !== lastSection) {
+          lastSection = song.section;
+          const header = document.createElement('div');
+          header.className = 'song-section-header';
+          header.textContent = song.section;
+          ol.appendChild(header);
+        }
         const li = document.createElement('li');
         li.className = 'setlist-item';
         li.innerHTML = `
@@ -368,7 +508,7 @@ export default function Home() {
         const key = `${songId}-${m.id}`;
         const tr = document.createElement('tr');
         tr.innerHTML = `
-          <td>${m.name}</td>
+          <td><span class="gen-badge">${m.generation || ''}期</span>${m.name}</td>
           <td><input type="text" class="parts-input" placeholder="役割を入力" value="${state.songParts[key]||''}" onchange="window.savePart(${songId},${m.id},this.value)" /></td>
         `;
         tbody.appendChild(tr);
@@ -406,7 +546,15 @@ export default function Home() {
     }
 
     // ===== SETTINGS =====
-    function renderSettings() { renderMemberSettings(); renderSongSettings(); renderAttendEventSettings(); }
+    function renderSettings() { renderMemberSettings(); renderSongSettings(); renderAttendEventSettings(); renderPerformanceDateSetting(); renderAdminPinSetting(); }
+    function renderPerformanceDateSetting() {
+      const inp = document.getElementById('setting-performance-date');
+      if (inp) inp.value = state.performanceDate;
+    }
+    function renderAdminPinSetting() {
+      const inp = document.getElementById('setting-admin-pin');
+      if (inp) inp.value = state.adminPin;
+    }
     function renderMemberSettings() {
       const container = document.getElementById('member-settings-list');
       container.innerHTML = '';
@@ -415,6 +563,7 @@ export default function Home() {
         div.className = 'settings-row';
         div.innerHTML = `
           <input type="text" class="settings-input" value="${m.name}" data-member-id="${m.id}" />
+          <input type="number" class="settings-input sm" value="${m.generation || ''}" placeholder="期" data-member-gen="${m.id}" style="flex:0 0 48px;" />
           <label class="local-toggle-label">
             <input type="checkbox" ${m.isLocal?'checked':''} data-local-id="${m.id}" /> 地方
           </label>
@@ -424,7 +573,7 @@ export default function Home() {
       });
     }
     function addMemberRow() {
-      state.members.push({ id: uid(), name: '新メンバー', isLocal: false });
+      state.members.push({ id: uid(), name: '新メンバー', generation: 1, isLocal: false });
       renderMemberSettings();
     }
     function deleteMember(id) {
@@ -457,7 +606,7 @@ export default function Home() {
       renderSongSettings();
     }
     function addSongRow() {
-      state.songs.push({ id: uid(), title: '新しい曲', artist: 'アーティスト' });
+      state.songs.push({ id: uid(), title: '新しい曲', artist: 'アーティスト', section: '' });
       renderSongSettings();
     }
     function deleteSong(id) {
@@ -494,6 +643,10 @@ export default function Home() {
         const m = state.members.find(m => m.id === parseInt(inp.dataset.memberId));
         if (m) m.name = inp.value.trim() || m.name;
       });
+      document.querySelectorAll('[data-member-gen]').forEach(inp => {
+        const m = state.members.find(m => m.id === parseInt(inp.dataset.memberGen));
+        if (m) m.generation = parseInt(inp.value) || m.generation;
+      });
       document.querySelectorAll('[data-local-id]').forEach(cb => {
         const m = state.members.find(m => m.id === parseInt(cb.dataset.localId));
         if (m) m.isLocal = cb.checked;
@@ -514,6 +667,10 @@ export default function Home() {
         const e = state.attendEvents.find(e => e.id === parseInt(inp.dataset.attendDate));
         if (e) e.date = inp.value.trim() || e.date;
       });
+      const pdInp = document.getElementById('setting-performance-date');
+      if (pdInp && pdInp.value) { state.performanceDate = pdInp.value; startCountdown(); }
+      const apInp = document.getElementById('setting-admin-pin');
+      if (apInp && apInp.value.trim()) { state.adminPin = apInp.value.trim(); }
       // Firebaseに全データを保存
       saveAllToFirebase();
       renderCalendar(); renderEventList(); renderTasks(); renderTaskChips();
@@ -535,16 +692,18 @@ export default function Home() {
 
     function saveAllToFirebase() {
       set(ref(db, '/'), {
-        attendance:  state.attendance,
-        memos:       state.memos,
-        songParts:   state.songParts,
-        songNotes:   state.songNotes,
-        events:      arrToObj(state.events),
-        tasks:       arrToObj(state.tasks),
-        news:        arrToObj(state.news),
-        members:     arrToObj(state.members),
-        songs:       arrToObj(state.songs),
-        attendEvents: arrToObj(state.attendEvents),
+        attendance:      state.attendance,
+        memos:           state.memos,
+        songParts:       state.songParts,
+        songNotes:       state.songNotes,
+        events:          arrToObj(state.events),
+        tasks:           arrToObj(state.tasks),
+        news:            arrToObj(state.news),
+        members:         arrToObj(state.members),
+        songs:           arrToObj(state.songs),
+        attendEvents:    arrToObj(state.attendEvents),
+        performanceDate: state.performanceDate,
+        adminPin:        state.adminPin,
       });
     }
 
@@ -555,24 +714,28 @@ export default function Home() {
       if (!data) {
         // 初回：デフォルトデータをFirebaseに書き込む
         saveAllToFirebase();
+        startCountdown();
+        applyAdminMode();
         return;
       }
       // Firebaseのデータでstateを更新
-      if (data.attendance)   state.attendance   = data.attendance;
-      if (data.memos)        state.memos        = data.memos;
-      if (data.songParts)    state.songParts    = data.songParts;
+      if (data.attendance)      state.attendance      = data.attendance;
+      if (data.memos)           state.memos           = data.memos;
+      if (data.songParts)       state.songParts       = data.songParts;
       if (data.songNotes) {
         state.songNotes = {};
         Object.entries(data.songNotes).forEach(([sid, notesObj]) => {
           state.songNotes[Number(sid)] = Array.isArray(notesObj) ? notesObj : Object.values(notesObj);
         });
       }
-      if (data.events)       state.events       = Object.values(data.events);
-      if (data.tasks)        state.tasks        = Object.values(data.tasks);
-      if (data.news)         state.news         = Object.values(data.news);
-      if (data.members)      state.members      = Object.values(data.members);
-      if (data.songs)        state.songs        = Object.values(data.songs);
-      if (data.attendEvents) state.attendEvents = Object.values(data.attendEvents);
+      if (data.events)          state.events          = Object.values(data.events).map(e => ({ time: '', memo: '', ...e }));
+      if (data.tasks)           state.tasks           = Object.values(data.tasks);
+      if (data.news)            state.news            = Object.values(data.news);
+      if (data.members)         state.members         = Object.values(data.members).map(m => ({ generation: 1, ...m }));
+      if (data.songs)           state.songs           = Object.values(data.songs).map(s => ({ section: '', ...s }));
+      if (data.attendEvents)    state.attendEvents    = Object.values(data.attendEvents);
+      if (data.performanceDate) state.performanceDate = data.performanceDate;
+      if (data.adminPin)        state.adminPin        = data.adminPin;
 
       // nextIdをFirebaseの最大IDより大きくする
       const allIds = [
@@ -592,40 +755,39 @@ export default function Home() {
       renderAttendEventTabs(); renderAttendance();
       renderSetlist();
       renderSettings();
+      startCountdown();
+      applyAdminMode();
     });
 
     // ===== EXPOSE TO WINDOW =====
-    window.switchTab       = switchTab;
-    window.openModal       = openModal;
-    window.closeModal      = closeModal;
-    window.applyTheme      = applyTheme;
-    window.openThemePanel  = openThemePanel;
-    window.closeThemePanel = closeThemePanel;
-    window.addEvent        = addEvent;
-    window.deleteEvent     = deleteEvent;
-    window.toggleTask      = toggleTask;
-    window.addTask         = addTask;
-    window.toggleAccordion = toggleAccordion;
-    window.addNews         = addNews;
-    window.setAttendance   = setAttendance;
-    window.saveMemo        = saveMemo;
-    window.openSongDetail  = openSongDetail;
-    window.closeSongDetail = closeSongDetail;
-    window.savePart        = savePart;
-    window.addNote         = addNote;
-    window.deleteNote      = deleteNote;
-    window.applySettings   = applySettings;
-    window.addMemberRow    = addMemberRow;
-    window.deleteMember    = deleteMember;
-    window.moveSong        = moveSong;
-    window.addSongRow      = addSongRow;
-    window.deleteSong      = deleteSong;
+    window.switchTab          = switchTab;
+    window.openModal          = openModal;
+    window.closeModal         = closeModal;
+    window.toggleAdmin        = toggleAdmin;
+    window.submitPin          = submitPin;
+    window.addEvent           = addEvent;
+    window.deleteEvent        = deleteEvent;
+    window.toggleTask         = toggleTask;
+    window.addTask            = addTask;
+    window.toggleAccordion    = toggleAccordion;
+    window.addNews            = addNews;
+    window.setAttendance      = setAttendance;
+    window.saveMemo           = saveMemo;
+    window.openSongDetail     = openSongDetail;
+    window.closeSongDetail    = closeSongDetail;
+    window.savePart           = savePart;
+    window.addNote            = addNote;
+    window.deleteNote         = deleteNote;
+    window.applySettings      = applySettings;
+    window.addMemberRow       = addMemberRow;
+    window.deleteMember       = deleteMember;
+    window.moveSong           = moveSong;
+    window.addSongRow         = addSongRow;
+    window.deleteSong         = deleteSong;
     window.addAttendEventRow  = addAttendEventRow;
     window.deleteAttendEvent  = deleteAttendEvent;
 
     // ===== INIT =====
-    applyTheme(currentTheme);
-
     document.querySelectorAll('.tab-btn').forEach(btn => {
       btn.addEventListener('click', () => switchTab(btn.dataset.tab));
     });
@@ -633,11 +795,13 @@ export default function Home() {
     document.getElementById('cal-prev').addEventListener('click', () => {
       const y = state.currentMonth.getFullYear(), m = state.currentMonth.getMonth();
       state.currentMonth = new Date(y, m - 1, 1);
+      state.selectedDate = null;
       renderCalendar(); renderEventList();
     });
     document.getElementById('cal-next').addEventListener('click', () => {
       const y = state.currentMonth.getFullYear(), m = state.currentMonth.getMonth();
       state.currentMonth = new Date(y, m + 1, 1);
+      state.selectedDate = null;
       renderCalendar(); renderEventList();
     });
 
@@ -650,12 +814,15 @@ export default function Home() {
     renderAttendance();
     renderSetlist();
     renderSettings();
+    startCountdown();
+    applyAdminMode();
 
     // ===== CLEANUP =====
     return () => {
-      if (typeof unsubscribe === 'function') unsubscribe(); // Firebaseリスナーを解除
+      if (typeof unsubscribe === 'function') unsubscribe();
+      if (countdownInterval) clearInterval(countdownInterval);
       const fns = [
-        'switchTab','openModal','closeModal','applyTheme','openThemePanel','closeThemePanel',
+        'switchTab','openModal','closeModal','toggleAdmin','submitPin',
         'addEvent','deleteEvent','toggleTask','addTask','toggleAccordion','addNews',
         'setAttendance','saveMemo','openSongDetail','closeSongDetail','savePart',
         'addNote','deleteNote','applySettings','addMemberRow','deleteMember',
@@ -677,6 +844,34 @@ export default function Home() {
       </Head>
 
       <div id="app">
+        {/* COUNTDOWN */}
+        <div className="countdown-section">
+          <div className="countdown-title" id="countdown-label">公演まであと</div>
+          <div className="countdown-timer" id="countdown-timer">
+            <div className="countdown-unit">
+              <span className="countdown-num" id="cd-days">0</span>
+              <small>日</small>
+            </div>
+            <span className="countdown-sep">:</span>
+            <div className="countdown-unit">
+              <span className="countdown-num" id="cd-hours">00</span>
+              <small>時間</small>
+            </div>
+            <span className="countdown-sep">:</span>
+            <div className="countdown-unit">
+              <span className="countdown-num" id="cd-mins">00</span>
+              <small>分</small>
+            </div>
+            <span className="countdown-sep">:</span>
+            <div className="countdown-unit">
+              <span className="countdown-num" id="cd-secs">00</span>
+              <small>秒</small>
+            </div>
+          </div>
+          <div className="countdown-message" id="countdown-message" style={{display:'none'}}></div>
+          <div className="countdown-date" id="countdown-date"></div>
+        </div>
+
         {/* HEADER */}
         <header id="app-header">
           <span className="star-deco">✦</span>
@@ -685,6 +880,7 @@ export default function Home() {
           <span className="star-deco">★</span>
           <div className="header-title">それからふくらむ可愛い頬を、</div>
           <div className="header-subtitle">✿ 10周年公演 ✿</div>
+          <button id="admin-btn" className="admin-lock-btn" onClick={() => window.toggleAdmin()}>🔓</button>
         </header>
 
         {/* TAB NAV */}
@@ -714,11 +910,16 @@ export default function Home() {
                 </thead>
                 <tbody id="cal-body"></tbody>
               </table>
+              {/* Selected date events */}
+              <div className="date-events hidden" id="date-events-panel">
+                <div className="date-events-label" id="date-events-label"></div>
+                <div id="date-events-list"></div>
+              </div>
             </div>
             <div className="card">
               <div className="card-title-row">
                 <span className="card-title">今後の予定</span>
-                <button className="btn-primary" onClick={() => window.openModal('event-add')}>＋ 追加</button>
+                <button className="btn-primary admin-only" onClick={() => window.openModal('event-add')}>＋ 追加</button>
               </div>
               <ul className="event-list" id="event-list"></ul>
             </div>
@@ -732,7 +933,7 @@ export default function Home() {
             <div className="card">
               <div className="card-title">未完了タスク<span className="count-badge" id="incomplete-count">0</span></div>
               <ul className="task-list" id="task-list-incomplete"></ul>
-              <button className="btn-primary btn-block mt8" onClick={() => window.openModal('task-add')}>＋ タスクを追加</button>
+              <button className="btn-primary btn-block mt8 admin-only" onClick={() => window.openModal('task-add')}>＋ タスクを追加</button>
             </div>
             <div className="card card-muted">
               <div className="card-title">完了済み<span className="count-badge" id="complete-count">0</span></div>
@@ -745,7 +946,7 @@ export default function Home() {
             <div className="card">
               <div className="card-title-row">
                 <span className="card-title">お知らせ一覧</span>
-                <button className="btn-primary" onClick={() => window.openModal('news-add')}>＋ 投稿</button>
+                <button className="btn-primary admin-only" onClick={() => window.openModal('news-add')}>＋ 投稿</button>
               </div>
               <div className="news-list" id="news-list"></div>
             </div>
@@ -776,7 +977,21 @@ export default function Home() {
           </section>
 
           {/* TAB: SETTINGS */}
-          <section id="tab-settings" className="tab-panel">
+          <section id="tab-settings" className="tab-panel admin-only">
+            <div className="card">
+              <div className="card-title">公演日設定</div>
+              <div className="modal-field">
+                <label>公演日</label>
+                <input type="date" id="setting-performance-date" />
+              </div>
+            </div>
+            <div className="card">
+              <div className="card-title">管理者PIN設定</div>
+              <div className="modal-field">
+                <label>PIN（4桁推奨）</label>
+                <input type="text" id="setting-admin-pin" placeholder="例: 1010" />
+              </div>
+            </div>
             <div className="card">
               <div className="card-title">メンバー管理</div>
               <div className="settings-list" id="member-settings-list"></div>
@@ -798,132 +1013,6 @@ export default function Home() {
         </main>
       </div>
 
-      {/* THEME FAB */}
-      <button id="theme-fab" onClick={() => window.openThemePanel()}>🎨</button>
-
-      {/* THEME PANEL */}
-      <div id="theme-panel-overlay" className="hidden">
-        <div id="theme-panel-backdrop" onClick={() => window.closeThemePanel()}></div>
-        <div id="theme-panel">
-          <div className="theme-panel-header">
-            <span className="theme-panel-title">🎨 テーマを選ぶ</span>
-            <button className="theme-close-btn" onClick={() => window.closeThemePanel()}>✕</button>
-          </div>
-
-          <div className="theme-section-label">🌸 カラフルで可愛い</div>
-          <div className="theme-grid">
-            <div className="theme-card" data-theme="theme-kawaii" onClick={() => window.applyTheme('theme-kawaii')}>
-              <div className="theme-card-name">Kawaii Pink</div>
-              <div className="theme-card-sub">ピンク × ラベンダー</div>
-              <div className="theme-swatches">
-                <div className="swatch" style={{background:'#F4517A'}}></div>
-                <div className="swatch" style={{background:'#C084FC'}}></div>
-                <div className="swatch" style={{background:'#FFD6E3'}}></div>
-              </div>
-              <span className="theme-check">✓</span>
-            </div>
-            <div className="theme-card" data-theme="theme-pastel" onClick={() => window.applyTheme('theme-pastel')}>
-              <div className="theme-card-name">Pastel Rainbow</div>
-              <div className="theme-card-sub">桃 × 空 × ミント</div>
-              <div className="theme-swatches">
-                <div className="swatch" style={{background:'#FFB7C5'}}></div>
-                <div className="swatch" style={{background:'#BAE6FD'}}></div>
-                <div className="swatch" style={{background:'#A7F3D0'}}></div>
-              </div>
-              <span className="theme-check">✓</span>
-            </div>
-            <div className="theme-card" data-theme="theme-y2k" onClick={() => window.applyTheme('theme-y2k')}>
-              <div className="theme-card-name">Y2K Pop</div>
-              <div className="theme-card-sub">ネオン × ブラック</div>
-              <div className="theme-swatches">
-                <div className="swatch" style={{background:'#FF2D78'}}></div>
-                <div className="swatch" style={{background:'#B026FF'}}></div>
-                <div className="swatch" style={{background:'#FFE600'}}></div>
-              </div>
-              <span className="theme-check">✓</span>
-            </div>
-            <div className="theme-card" data-theme="theme-fairy" onClick={() => window.applyTheme('theme-fairy')}>
-              <div className="theme-card-name">Fairy Tale</div>
-              <div className="theme-card-sub">桃 × ラベンダー × ゴールド</div>
-              <div className="theme-swatches">
-                <div className="swatch" style={{background:'#FECACA'}}></div>
-                <div className="swatch" style={{background:'#DDD6FE'}}></div>
-                <div className="swatch" style={{background:'#FDE68A'}}></div>
-              </div>
-              <span className="theme-check">✓</span>
-            </div>
-          </div>
-
-          <div className="theme-section-label">🩵 グレーと水色で可愛い</div>
-          <div className="theme-grid">
-            <div className="theme-card" data-theme="theme-iceblue" onClick={() => window.applyTheme('theme-iceblue')}>
-              <div className="theme-card-name">Ice Blue</div>
-              <div className="theme-card-sub">スカイ × シルバー</div>
-              <div className="theme-swatches">
-                <div className="swatch" style={{background:'#7DD3FC'}}></div>
-                <div className="swatch" style={{background:'#CBD5E1'}}></div>
-                <div className="swatch" style={{background:'#F0F9FF'}}></div>
-              </div>
-              <span className="theme-check">✓</span>
-            </div>
-            <div className="theme-card" data-theme="theme-rainy" onClick={() => window.applyTheme('theme-rainy')}>
-              <div className="theme-card-name">Rainy Day</div>
-              <div className="theme-card-sub">スレート × グレー</div>
-              <div className="theme-swatches">
-                <div className="swatch" style={{background:'#94A3B8'}}></div>
-                <div className="swatch" style={{background:'#7DD3FC'}}></div>
-                <div className="swatch" style={{background:'#E2E8F0'}}></div>
-              </div>
-              <span className="theme-check">✓</span>
-            </div>
-            <div className="theme-card" data-theme="theme-pearl" onClick={() => window.applyTheme('theme-pearl')}>
-              <div className="theme-card-name">Pearl Sky</div>
-              <div className="theme-card-sub">パウダーブルー × パール</div>
-              <div className="theme-swatches">
-                <div className="swatch" style={{background:'#BFDBFE'}}></div>
-                <div className="swatch" style={{background:'#A5B4FC'}}></div>
-                <div className="swatch" style={{background:'#F1F5F9'}}></div>
-              </div>
-              <span className="theme-check">✓</span>
-            </div>
-          </div>
-
-          <div className="theme-section-label">✨ 落ち着いたおしゃれ系</div>
-          <div className="theme-grid">
-            <div className="theme-card" data-theme="theme-rose" onClick={() => window.applyTheme('theme-rose')}>
-              <div className="theme-card-name">Minimal Rose</div>
-              <div className="theme-card-sub">ダスティローズ × オフホワイト</div>
-              <div className="theme-swatches">
-                <div className="swatch" style={{background:'#C4746A'}}></div>
-                <div className="swatch" style={{background:'#FAF9F7'}}></div>
-                <div className="swatch" style={{background:'#E8E0D8'}}></div>
-              </div>
-              <span className="theme-check">✓</span>
-            </div>
-            <div className="theme-card" data-theme="theme-sage" onClick={() => window.applyTheme('theme-sage')}>
-              <div className="theme-card-name">Sage Garden</div>
-              <div className="theme-card-sub">セージ × テラコッタ</div>
-              <div className="theme-swatches">
-                <div className="swatch" style={{background:'#84A98C'}}></div>
-                <div className="swatch" style={{background:'#BC6C25'}}></div>
-                <div className="swatch" style={{background:'#FEFAE0'}}></div>
-              </div>
-              <span className="theme-check">✓</span>
-            </div>
-            <div className="theme-card" data-theme="theme-midnight" onClick={() => window.applyTheme('theme-midnight')}>
-              <div className="theme-card-name">Midnight Luxe</div>
-              <div className="theme-card-sub">チャコール × ゴールド</div>
-              <div className="theme-swatches">
-                <div className="swatch" style={{background:'#1C1C2E'}}></div>
-                <div className="swatch" style={{background:'#D4AF37'}}></div>
-                <div className="swatch" style={{background:'#2D2B55'}}></div>
-              </div>
-              <span className="theme-check">✓</span>
-            </div>
-          </div>
-        </div>
-      </div>
-
       {/* SETLIST DETAIL SLIDE PANEL */}
       <div id="setlist-detail" className="hidden">
         <div className="slide-header">
@@ -943,6 +1032,25 @@ export default function Home() {
           <div className="note-add-row">
             <input type="text" id="note-input" placeholder="連絡事項を追加..." />
             <button className="btn-primary" onClick={() => window.addNote()}>追加</button>
+          </div>
+        </div>
+      </div>
+
+      {/* MODAL: PIN */}
+      <div id="overlay-pin" className="modal-overlay hidden">
+        <div className="modal-backdrop" onClick={() => window.closeModal('pin')}></div>
+        <div className="modal-box">
+          <div className="modal-header">
+            <span className="modal-title">🔒 管理者ログイン</span>
+            <button className="modal-close" onClick={() => window.closeModal('pin')}>✕</button>
+          </div>
+          <div className="modal-field">
+            <label>PIN を入力</label>
+            <input type="password" id="pin-input" placeholder="PIN" onKeyDown={(e) => { if (e.key === 'Enter') window.submitPin(); }} />
+          </div>
+          <div className="modal-footer">
+            <button className="btn-secondary" onClick={() => window.closeModal('pin')}>キャンセル</button>
+            <button className="btn-primary" onClick={() => window.submitPin()}>ログイン</button>
           </div>
         </div>
       </div>
@@ -1021,6 +1129,14 @@ export default function Home() {
           <div className="modal-field">
             <label>日付</label>
             <input type="date" id="new-event-date" />
+          </div>
+          <div className="modal-field">
+            <label>時間（任意）</label>
+            <input type="time" id="new-event-time" />
+          </div>
+          <div className="modal-field">
+            <label>メモ（任意）</label>
+            <textarea id="new-event-memo" placeholder="メモを入力"></textarea>
           </div>
           <div className="modal-footer">
             <button className="btn-secondary" onClick={() => window.closeModal('event-add')}>キャンセル</button>
