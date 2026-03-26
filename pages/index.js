@@ -597,7 +597,7 @@ export default function Home() {
             </div>
           </div>
           ${cur === 'late' ? `<div class="late-time-row"><input type="text" class="late-time-input" placeholder="例：17:00〜 / 〜19:00早退" value="${lt}" onchange="window.saveLateTime(${m.id},this.value)" /></div>` : ''}
-          ${m.isLocal ? `<textarea class="memo-field" placeholder="上京メモ（新幹線・宿泊など）" onchange="window.saveMemo(${m.id},this.value)">${state.memos[eid+'-'+m.id]||''}</textarea>` : ''}
+          ${m.isLocal ? `<input type="text" class="memo-field-single" placeholder="上京メモ（新幹線・宿泊など）" value="${(state.memos[eid+'-'+m.id]||'').replace(/"/g,'&quot;')}" onchange="window.saveMemo(${m.id},this.value)" />` : ''}
         `;
         container.appendChild(div);
       });
@@ -806,6 +806,19 @@ export default function Home() {
       });
     }
     function addMemberRow() {
+      // 入力中の値をstateに反映してから追加
+      document.querySelectorAll('[data-member-id]').forEach(inp => {
+        const m = state.members.find(m => m.id === parseInt(inp.dataset.memberId));
+        if (m) m.name = inp.value.trim() || m.name;
+      });
+      document.querySelectorAll('[data-member-gen]').forEach(inp => {
+        const m = state.members.find(m => m.id === parseInt(inp.dataset.memberGen));
+        if (m && inp.value) m.generation = parseInt(inp.value) || m.generation;
+      });
+      document.querySelectorAll('[data-local-id]').forEach(cb => {
+        const m = state.members.find(m => m.id === parseInt(cb.dataset.localId));
+        if (m) m.isLocal = cb.checked;
+      });
       state.members.push({ id: uid(), name: '新メンバー', generation: 1, isLocal: false });
       renderMemberSettings();
     }
@@ -840,6 +853,15 @@ export default function Home() {
       renderSongSettings();
     }
     function addSongRow() {
+      // 入力中の値をstateに反映してから追加
+      document.querySelectorAll('[data-song-title]').forEach(inp => {
+        const s = state.songs.find(s => s.id === parseInt(inp.dataset.songTitle));
+        if (s) s.title = inp.value.trim() || s.title;
+      });
+      document.querySelectorAll('[data-song-artist]').forEach(inp => {
+        const s = state.songs.find(s => s.id === parseInt(inp.dataset.songArtist));
+        if (s) s.artist = inp.value.trim() || s.artist;
+      });
       state.songs.push({ id: uid(), title: '新しい曲', artist: 'アーティスト', section: '' });
       renderSongSettings();
     }
