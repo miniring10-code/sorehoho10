@@ -598,10 +598,17 @@ html, body {
   padding-bottom: env(safe-area-inset-bottom, 16px);
 }
 
+/* ===== TOP SECTION (header + countdown 統合) ===== */
+.top-section {
+  background: var(--header-bg);
+  display: flex;
+  flex-direction: column;
+}
+
 /* ===== HEADER ===== */
 #app-header {
-  background: var(--header-bg);
-  padding: 18px 16px 14px;
+  background: transparent;
+  padding: 18px 16px 10px;
   text-align: center;
   position: relative;
   overflow: hidden;
@@ -765,7 +772,7 @@ html, body {
   font-weight: 700;
 }
 #cal-month-label { font-weight: 800; font-size: 15px; color: var(--text); }
-.calendar-grid { width: 100%; border-collapse: collapse; }
+.calendar-grid { width: 100%; border-collapse: collapse; table-layout: fixed; }
 .calendar-grid th {
   text-align: center;
   font-size: 11px;
@@ -976,15 +983,17 @@ html, body {
 .attend-btn.active-absent  { background: var(--absent-bg);  color: var(--absent-fg);  border-color: transparent; }
 .memo-field {
   width: 100%;
-  height: 52px;
-  margin-top: 6px;
+  height: 40px;
+  margin-top: 4px;
   border: 1.5px solid var(--input-border);
   border-radius: 8px;
-  padding: 6px 10px;
+  padding: 5px 10px;
   font-size: 12px;
   color: var(--text);
-  resize: none;
+  resize: vertical;
   background: var(--input-bg);
+  min-height: 40px;
+  max-height: 80px;
 }
 
 /* ===== SETLIST ===== */
@@ -1303,8 +1312,8 @@ html, body {
 
 /* ===== COUNTDOWN ===== */
 .countdown-section {
-  background: var(--header-bg);
-  padding: 20px 16px 16px;
+  background: transparent;
+  padding: 4px 16px 20px;
   text-align: center;
 }
 .countdown-title {
@@ -1362,33 +1371,32 @@ html, body {
 }
 
 /* ===== ADMIN ===== */
-.admin-lock-btn {
-  position: absolute;
-  top: 12px;
-  right: 12px;
-  background: rgba(255,255,255,0.2);
-  border: 1.5px solid rgba(255,255,255,0.4);
-  border-radius: 20px;
-  padding: 4px 10px;
-  color: white;
+.admin-lock-btn-full {
+  width: 100%;
+  padding: 12px 16px;
+  background: var(--btn-secondary-bg);
+  color: var(--btn-secondary-fg);
+  border: 1.5px solid var(--btn-secondary-border);
+  border-radius: 12px;
+  font-size: 14px;
+  font-weight: 800;
+  text-align: center;
   cursor: pointer;
-  font-size: 13px;
   display: flex;
   align-items: center;
-  gap: 4px;
-  line-height: 1.4;
+  justify-content: center;
+  gap: 8px;
+  transition: background 0.15s;
 }
-.admin-lock-btn.active {
-  background: rgba(255,255,255,0.35);
+.admin-lock-btn-full.active {
+  background: var(--btn-bg);
+  color: var(--btn-fg);
+  border-color: transparent;
 }
-.admin-badge {
-  font-size: 11px;
-  font-weight: 800;
-}
-.admin-only { display: none; }
-.app-admin .admin-only { display: revert; }
-#tab-settings.admin-only { display: none; }
-.app-admin #tab-settings.admin-only { display: block; }
+.admin-login-card { padding: 12px 16px; }
+.admin-badge { font-size: 12px; font-weight: 800; }
+.admin-only { display: none !important; }
+.app-admin .admin-only { display: revert !important; }
 
 /* ===== CALENDAR: SELECTED DATE ===== */
 td.selected-day {
@@ -1607,4 +1615,154 @@ td.selected-day .day-num {
 @keyframes hoho-pop {
   from { opacity: 0; transform: scale(0.85) translateY(4px); }
   to   { opacity: 1; transform: scale(1) translateY(0); }
+}
+
+/* ===== RECENT NEWS (カレンダー上部) ===== */
+.recent-news-area {
+  margin: 0 0 8px 0;
+}
+.recent-news-title {
+  font-size: 12px;
+  font-weight: 800;
+  color: var(--text-sub);
+  margin-bottom: 6px;
+  padding: 0 2px;
+}
+.recent-news-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 10px;
+  background: var(--card-muted-bg);
+  border-radius: 10px;
+  margin-bottom: 5px;
+  cursor: pointer;
+  border: 1px solid var(--border);
+}
+.recent-news-cat {
+  font-size: 10px;
+  font-weight: 700;
+  background: var(--accent-light);
+  color: var(--accent);
+  border-radius: 6px;
+  padding: 1px 5px;
+  white-space: nowrap;
+}
+.recent-news-text {
+  flex: 1;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.recent-news-time {
+  font-size: 10px;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
+/* ===== EVENT LIST: COLLAPSIBLE ===== */
+.event-collapsible .event-detail-row { display: none; }
+.event-collapsible.open .event-detail-row { display: block; }
+.event-main-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  cursor: pointer;
+  padding: 2px 0;
+}
+.event-arrow {
+  font-size: 18px;
+  color: var(--text-muted);
+  transition: transform 0.2s;
+  line-height: 1;
+}
+.event-collapsible.open .event-arrow { transform: rotate(90deg); }
+.event-detail-row {
+  padding: 8px 4px 4px;
+  border-top: 1px dashed var(--border);
+  margin-top: 6px;
+}
+.event-detail-item {
+  font-size: 12px;
+  color: var(--text-sub);
+  margin-bottom: 3px;
+}
+.event-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 6px;
+}
+.btn-sm {
+  padding: 4px 10px !important;
+  font-size: 12px !important;
+  border-radius: 8px !important;
+}
+
+/* ===== MODAL: FIELD ROW (横並び) ===== */
+.modal-field-row {
+  display: flex;
+  gap: 10px;
+}
+.modal-field-row > div {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.modal-field-row label {
+  font-size: 11px;
+  color: var(--text-muted);
+  font-weight: 700;
+}
+
+/* ===== ATTENDANCE: LATE ===== */
+.attend-btn-late {
+  font-size: 10px !important;
+  padding: 5px 6px !important;
+  white-space: nowrap;
+}
+.attend-btn.active-late {
+  background: #A78BFA !important;
+  color: white !important;
+  border-color: #7C3AED !important;
+}
+.late-time-row {
+  padding: 6px 4px 2px;
+}
+.late-time-input {
+  width: 100%;
+  padding: 6px 10px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--input-bg);
+  color: var(--text);
+  font-size: 12px;
+}
+
+/* ===== ATTEND SUMMARY ===== */
+.attend-summary {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  justify-content: center;
+  margin-bottom: 14px;
+}
+
+/* ===== MEMO FIELD: SMALLER ===== */
+.memo-field {
+  width: 100%;
+  min-height: 44px;
+  max-height: 80px;
+  resize: vertical;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 6px 10px;
+  background: var(--input-bg);
+  color: var(--text);
+  font-size: 12px;
+  margin-top: 4px;
 }

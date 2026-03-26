@@ -11,14 +11,13 @@ export default function Home() {
     // ===== ADMIN MODE =====
     let isAdmin = sessionStorage.getItem('sorehoho-admin') === 'true';
     function applyAdminMode() {
+      const btn = document.getElementById('admin-btn');
       if (isAdmin) {
         document.body.classList.add('app-admin');
-        document.getElementById('admin-btn').classList.add('active');
-        document.getElementById('admin-btn').innerHTML = '🔒 <span class="admin-badge">管理者</span>';
+        if (btn) { btn.classList.add('active'); btn.innerHTML = '🔒 <span class="admin-badge">管理者モード ON</span>'; }
       } else {
         document.body.classList.remove('app-admin');
-        document.getElementById('admin-btn').classList.remove('active');
-        document.getElementById('admin-btn').innerHTML = '🔓';
+        if (btn) { btn.classList.remove('active'); btn.innerHTML = '🔓 管理者ログイン'; }
       }
     }
     function toggleAdmin() {
@@ -89,7 +88,7 @@ export default function Home() {
 
     const state = {
       currentTab: 'schedule',
-      currentMonth: new Date(2025, 10, 1),
+      currentMonth: new Date(new Date().getFullYear(), new Date().getMonth(), 1),
       selectedDate: null,
       performanceDate: '2025-11-23',
       adminPin: '1010',
@@ -141,11 +140,11 @@ export default function Home() {
         { id: 21, title: '47の素敵な街へ',         artist: 'AKB48',            section: 'アンコール' },
       ],
       events: [
-        { id: 1, date: '2025-11-03', name: '振り付け練習', time: '', memo: '' },
-        { id: 2, date: '2025-11-08', name: '衣装合わせ',   time: '', memo: '' },
-        { id: 3, date: '2025-11-16', name: '通し練習',     time: '', memo: '' },
-        { id: 4, date: '2025-11-22', name: 'ゲネプロ',     time: '', memo: '' },
-        { id: 5, date: '2025-11-23', name: '★本番公演★',  time: '15:00', memo: '' },
+        { id: 1, date: '2025-11-03', name: '振り付け練習', time: '', timeEnd: '', place: '', memo: '' },
+        { id: 2, date: '2025-11-08', name: '衣装合わせ',   time: '', timeEnd: '', place: '', memo: '' },
+        { id: 3, date: '2025-11-16', name: '通し練習',     time: '', timeEnd: '', place: '', memo: '' },
+        { id: 4, date: '2025-11-22', name: 'ゲネプロ',     time: '', timeEnd: '', place: '', memo: '' },
+        { id: 5, date: '2025-11-23', name: '★本番公演★',  time: '15:00', timeEnd: '', place: '', memo: '' },
       ],
       tasks: [
         { id: 10, name: '衣装発注確認',           cat: '衣装',       done: false },
@@ -155,9 +154,9 @@ export default function Home() {
       ],
       taskFilter: 'all',
       news: [
-        { id: 20, title: '11月スケジュールについて',   cat: '全体', body: '11月のスケジュールを確認してください。練習日程・衣装合わせ・ゲネプロの日程は変更ありません。', time: '2時間前', isNew: true  },
-        { id: 21, title: '衣装打ち合わせ日程のご連絡', cat: '衣装', body: '衣装打ち合わせは11月8日（土）に行います。全員参加必須です。',                               time: '1日前',  isNew: true  },
-        { id: 22, title: 'グッズ制作について',          cat: 'グッズ', body: 'グッズのデザイン案が完成しました。共有フォルダをご確認ください。',                         time: '3日前',  isNew: false },
+        { id: 20, title: '11月スケジュールについて',   cat: '全体', body: '11月のスケジュールを確認してください。練習日程・衣装合わせ・ゲネプロの日程は変更ありません。', createdAt: Date.now() - 2*60*60*1000 },
+        { id: 21, title: '衣装打ち合わせ日程のご連絡', cat: '衣装', body: '衣装打ち合わせは11月8日（土）に行います。全員参加必須です。',                               createdAt: Date.now() - 24*60*60*1000 },
+        { id: 22, title: 'グッズ制作について',          cat: 'グッズ', body: 'グッズのデザイン案が完成しました。共有フォルダをご確認ください。',                         createdAt: Date.now() - 4*24*60*60*1000 },
       ],
       openNewsId: null,
       attendEvents: [
@@ -172,6 +171,7 @@ export default function Home() {
         '1-4':'present','1-5':'absent',
       },
       memos: {},
+      lateTime: {},
       songParts: {},
       songNotes: {},
       songLeaders: {},    // { songId: ['name1','name2','name3'] }
@@ -180,6 +180,24 @@ export default function Home() {
     };
 
     const TASK_CATS = ['all','sns','会場','衣装','クリエイティブ','現役連絡','ロゴ','kv','演出','音源','チケット','グッズ','お金','スタジオ予約','スケジュール'];
+
+    // ===== TIME HELPERS =====
+    function formatRelativeTime(ts) {
+      if (!ts) return '';
+      const diff = Date.now() - ts;
+      const mins  = Math.floor(diff / (1000 * 60));
+      const hours = Math.floor(diff / (1000 * 60 * 60));
+      const days  = Math.floor(diff / (1000 * 60 * 60 * 24));
+      if (mins < 1)   return 'たった今';
+      if (mins < 60)  return `${mins}分前`;
+      if (hours < 24) return `${hours}時間前`;
+      if (days < 30)  return `${days}日前`;
+      return `${Math.floor(days/30)}ヶ月前`;
+    }
+    function isNewsNew(post) {
+      if (post.createdAt) return (Date.now() - post.createdAt) < 3 * 24 * 60 * 60 * 1000;
+      return !!post.isNew;
+    }
 
     // ===== HOHO MASCOT =====
     function updateHohoMessage() {
@@ -253,7 +271,25 @@ export default function Home() {
     function closeModal(name) { document.getElementById('overlay-' + name).classList.add('hidden'); }
 
     // ===== CALENDAR =====
+    function renderRecentNewsInCalendar() {
+      const area = document.getElementById('recent-news-area');
+      if (!area) return;
+      const recent = [...state.news].slice(0, 3);
+      if (recent.length === 0) { area.innerHTML = ''; return; }
+      area.innerHTML = '<div class="recent-news-title">📢 最新のお知らせ</div>' +
+        recent.map(n => {
+          const showNew = isNewsNew(n);
+          const timeStr = n.createdAt ? formatRelativeTime(n.createdAt) : (n.time || '');
+          return `<div class="recent-news-item" onclick="window.switchTab('news')">
+            <span class="recent-news-cat">${n.cat}</span>
+            ${showNew ? '<span class="news-new-badge">NEW</span>' : ''}
+            <span class="recent-news-text">${n.title}</span>
+            <span class="recent-news-time">${timeStr}</span>
+          </div>`;
+        }).join('');
+    }
     function renderCalendar() {
+      renderRecentNewsInCalendar();
       const year = state.currentMonth.getFullYear();
       const month = state.currentMonth.getMonth();
       document.getElementById('cal-month-label').textContent = `${year}年${month + 1}月`;
@@ -326,9 +362,11 @@ export default function Home() {
         dayEvents.forEach(ev => {
           const div = document.createElement('div');
           div.className = 'date-event-item';
+          const timeStr = ev.time ? (ev.timeEnd ? `${ev.time}〜${ev.timeEnd}` : ev.time) : '';
           div.innerHTML = `
-            <div><span class="date-event-name">${ev.name}</span>${ev.time ? `<span class="date-event-time">${ev.time}</span>` : ''}</div>
-            ${ev.memo ? `<div class="date-event-memo">${ev.memo}</div>` : ''}
+            <div><span class="date-event-name">${ev.name}</span>${timeStr ? `<span class="date-event-time">${timeStr}</span>` : ''}</div>
+            ${ev.place ? `<div class="date-event-memo">📍 ${ev.place}</div>` : ''}
+            ${ev.memo  ? `<div class="date-event-memo">📝 ${ev.memo}</div>` : ''}
           `;
           list.appendChild(div);
         });
@@ -338,38 +376,81 @@ export default function Home() {
     function renderEventList() {
       const ul = document.getElementById('event-list');
       ul.innerHTML = '';
-      const sorted = [...state.events].sort((a,b) => a.date.localeCompare(b.date));
+      const now = new Date();
+      const sorted = [...state.events]
+        .filter(ev => new Date(ev.date + 'T23:59:59') >= now)
+        .sort((a,b) => a.date.localeCompare(b.date));
       sorted.forEach(ev => {
         const li = document.createElement('li');
-        li.className = 'event-item';
+        li.className = 'event-item event-collapsible';
         const parts = ev.date.split('-');
         const dl = `${parseInt(parts[1])}/${parseInt(parts[2])}`;
+        const timeStr = ev.time ? (ev.timeEnd ? `${ev.time}〜${ev.timeEnd}` : ev.time) : '';
         li.innerHTML = `
-          <span class="event-date">${dl}</span>
-          <div class="event-info">
-            <span class="event-name">${ev.name}</span>
-            ${ev.time ? `<span class="event-time">${ev.time}</span>` : ''}
-            ${ev.memo ? `<span class="event-memo">${ev.memo}</span>` : ''}
+          <div class="event-main-row" onclick="this.closest('.event-collapsible').classList.toggle('open')">
+            <span class="event-date">${dl}</span>
+            <div class="event-info">
+              <span class="event-name">${ev.name}</span>
+              ${timeStr ? `<span class="event-time">${timeStr}</span>` : ''}
+            </div>
+            <span class="event-arrow">›</span>
           </div>
-          <div class="event-actions admin-only"><button class="btn-icon" onclick="window.deleteEvent(${ev.id})">🗑</button></div>
+          <div class="event-detail-row hidden-detail">
+            ${ev.place ? `<div class="event-detail-item">📍 ${ev.place}</div>` : ''}
+            ${ev.memo  ? `<div class="event-detail-item">📝 ${ev.memo}</div>` : ''}
+            <div class="event-actions admin-only">
+              <button class="btn-secondary btn-sm" onclick="window.openEditEvent(${ev.id})">✏️ 編集</button>
+              <button class="btn-icon" onclick="window.deleteEvent(${ev.id})">🗑</button>
+            </div>
+          </div>
         `;
         ul.appendChild(li);
       });
     }
 
     function addEvent() {
-      const name = document.getElementById('new-event-name').value.trim();
-      const date = document.getElementById('new-event-date').value;
-      const time = document.getElementById('new-event-time').value.trim();
-      const memo = document.getElementById('new-event-memo').value.trim();
+      const name    = document.getElementById('new-event-name').value.trim();
+      const date    = document.getElementById('new-event-date').value;
+      const time    = document.getElementById('new-event-time').value.trim();
+      const timeEnd = document.getElementById('new-event-time-end').value.trim();
+      const place   = document.getElementById('new-event-place').value.trim();
+      const memo    = document.getElementById('new-event-memo').value.trim();
       if (!name || !date) return alert('イベント名と日付を入力してください');
-      state.events.push({ id: uid(), date, name, time: time || '', memo: memo || '' });
+      state.events.push({ id: uid(), date, name, time: time || '', timeEnd: timeEnd || '', place: place || '', memo: memo || '' });
       saveToFirebase('/events', arrToObj(state.events));
       closeModal('event-add');
       document.getElementById('new-event-name').value = '';
       document.getElementById('new-event-date').value = '';
       document.getElementById('new-event-time').value = '';
+      document.getElementById('new-event-time-end').value = '';
+      document.getElementById('new-event-place').value = '';
       document.getElementById('new-event-memo').value = '';
+      renderCalendar(); renderEventList();
+    }
+    function openEditEvent(id) {
+      const ev = state.events.find(e => e.id === id);
+      if (!ev) return;
+      document.getElementById('edit-event-id').value    = id;
+      document.getElementById('edit-event-name').value  = ev.name;
+      document.getElementById('edit-event-date').value  = ev.date;
+      document.getElementById('edit-event-time').value  = ev.time || '';
+      document.getElementById('edit-event-time-end').value = ev.timeEnd || '';
+      document.getElementById('edit-event-place').value = ev.place || '';
+      document.getElementById('edit-event-memo').value  = ev.memo || '';
+      openModal('event-edit');
+    }
+    function updateEvent() {
+      const id      = parseInt(document.getElementById('edit-event-id').value);
+      const ev      = state.events.find(e => e.id === id);
+      if (!ev) return;
+      ev.name    = document.getElementById('edit-event-name').value.trim() || ev.name;
+      ev.date    = document.getElementById('edit-event-date').value || ev.date;
+      ev.time    = document.getElementById('edit-event-time').value.trim();
+      ev.timeEnd = document.getElementById('edit-event-time-end').value.trim();
+      ev.place   = document.getElementById('edit-event-place').value.trim();
+      ev.memo    = document.getElementById('edit-event-memo').value.trim();
+      saveToFirebase('/events', arrToObj(state.events));
+      closeModal('event-edit');
       renderCalendar(); renderEventList();
     }
     function deleteEvent(id) {
@@ -438,15 +519,17 @@ export default function Home() {
         div.className = 'news-item';
         div.dataset.id = post.id;
         const isOpen = state.openNewsId === post.id;
+        const showNew = isNewsNew(post);
+        const timeStr = post.createdAt ? formatRelativeTime(post.createdAt) : (post.time || '');
         div.innerHTML = `
           <div class="news-header" onclick="window.toggleAccordion(${post.id})">
             <div class="news-meta">
               <span class="news-cat-badge">${post.cat}</span>
-              ${post.isNew ? '<span class="news-new-badge">NEW</span>' : ''}
+              ${showNew ? '<span class="news-new-badge">NEW</span>' : ''}
             </div>
             <div class="news-main">
               <div class="news-title">${post.title}</div>
-              <div class="news-time">${post.time}</div>
+              <div class="news-time">${timeStr}</div>
             </div>
             <span class="accordion-arrow ${isOpen?'open':''}">▼</span>
           </div>
@@ -464,7 +547,7 @@ export default function Home() {
       const body  = document.getElementById('new-news-body').value.trim();
       const cat   = document.getElementById('new-news-cat').value;
       if (!title) return alert('タイトルを入力してください');
-      state.news.unshift({ id: uid(), title, body, cat, time: 'たった今', isNew: true });
+      state.news.unshift({ id: uid(), title, body, cat, createdAt: Date.now() });
       saveToFirebase('/news', arrToObj(state.news));
       closeModal('news-add');
       document.getElementById('new-news-title').value = '';
@@ -486,15 +569,21 @@ export default function Home() {
     }
     function renderAttendance() {
       const eid = state.currentAttendEvent;
-      let counts = { present:0, maybe:0, absent:0 };
-      state.members.forEach(m => { counts[state.attendance[`${eid}-${m.id}`] || 'absent']++; });
+      let counts = { present:0, maybe:0, absent:0, late:0 };
+      state.members.forEach(m => {
+        const v = state.attendance[`${eid}-${m.id}`] || 'absent';
+        if (counts[v] !== undefined) counts[v]++;
+        else counts.absent++;
+      });
       document.getElementById('count-present').textContent = counts.present;
       document.getElementById('count-maybe').textContent   = counts.maybe;
       document.getElementById('count-absent').textContent  = counts.absent;
+      document.getElementById('count-late').textContent    = counts.late;
       const container = document.getElementById('attend-member-list');
       container.innerHTML = '';
       state.members.forEach(m => {
         const cur = state.attendance[`${eid}-${m.id}`] || 'absent';
+        const lt  = state.lateTime[`${eid}-${m.id}`] || '';
         const div = document.createElement('div');
         div.className = 'attend-row';
         div.innerHTML = `
@@ -504,8 +593,10 @@ export default function Home() {
               <button class="attend-btn ${cur==='present'?'active-present':''}" onclick="window.setAttendance(${m.id},'present')">○</button>
               <button class="attend-btn ${cur==='maybe'  ?'active-maybe'  :''}" onclick="window.setAttendance(${m.id},'maybe')">△</button>
               <button class="attend-btn ${cur==='absent' ?'active-absent' :''}" onclick="window.setAttendance(${m.id},'absent')">✕</button>
+              <button class="attend-btn attend-btn-late ${cur==='late'?'active-late':''}" onclick="window.setAttendance(${m.id},'late')">遅/早</button>
             </div>
           </div>
+          ${cur === 'late' ? `<div class="late-time-row"><input type="text" class="late-time-input" placeholder="例：17:00〜 / 〜19:00早退" value="${lt}" onchange="window.saveLateTime(${m.id},this.value)" /></div>` : ''}
           ${m.isLocal ? `<textarea class="memo-field" placeholder="上京メモ（新幹線・宿泊など）" onchange="window.saveMemo(${m.id},this.value)">${state.memos[eid+'-'+m.id]||''}</textarea>` : ''}
         `;
         container.appendChild(div);
@@ -519,6 +610,10 @@ export default function Home() {
     function saveMemo(memberId, value) {
       state.memos[`${state.currentAttendEvent}-${memberId}`] = value;
       saveToFirebase('/memos', state.memos);
+    }
+    function saveLateTime(memberId, value) {
+      state.lateTime[`${state.currentAttendEvent}-${memberId}`] = value;
+      saveToFirebase('/lateTime', state.lateTime);
     }
 
     // ===== SETLIST =====
@@ -717,6 +812,7 @@ export default function Home() {
     function deleteMember(id) {
       if (state.members.length <= 1) return alert('メンバーが1人以上必要です');
       state.members = state.members.filter(m => m.id !== id);
+      saveToFirebase('/members', arrToObj(state.members));
       renderMemberSettings();
     }
     function renderSongSettings() {
@@ -750,6 +846,7 @@ export default function Home() {
     function deleteSong(id) {
       if (state.songs.length <= 1) return alert('曲が1曲以上必要です');
       state.songs = state.songs.filter(s => s.id !== id);
+      saveToFirebase('/songs', arrToObj(state.songs));
       renderSongSettings();
     }
     function renderAttendEventSettings() {
@@ -832,6 +929,7 @@ export default function Home() {
       set(ref(db, '/'), {
         attendance:      state.attendance,
         memos:           state.memos,
+        lateTime:        state.lateTime,
         songParts:       state.songParts,
         songNotes:       state.songNotes,
         songLeaders:     state.songLeaders,
@@ -880,9 +978,10 @@ export default function Home() {
           state.songPerformers[Number(sid)] = Array.isArray(val) ? val : Object.values(val);
         });
       }
-      if (data.events)          state.events          = Object.values(data.events).map(e => ({ time: '', memo: '', ...e }));
+      if (data.lateTime)        state.lateTime        = data.lateTime;
+      if (data.events)          state.events          = Object.values(data.events).map(e => ({ time: '', timeEnd: '', place: '', memo: '', ...e }));
       if (data.tasks)           state.tasks           = Object.values(data.tasks);
-      if (data.news)            state.news            = Object.values(data.news);
+      if (data.news)            state.news            = Object.values(data.news).map(n => ({ createdAt: null, isNew: false, time: '', ...n }));
       if (data.members)         state.members         = Object.values(data.members).map(m => ({ generation: 1, ...m }));
       if (data.songs)           state.songs           = Object.values(data.songs).map(s => ({ section: '', ...s }));
       if (data.attendEvents)    state.attendEvents    = Object.values(data.attendEvents);
@@ -919,6 +1018,8 @@ export default function Home() {
     window.toggleAdmin        = toggleAdmin;
     window.submitPin          = submitPin;
     window.addEvent           = addEvent;
+    window.openEditEvent      = openEditEvent;
+    window.updateEvent        = updateEvent;
     window.deleteEvent        = deleteEvent;
     window.toggleTask         = toggleTask;
     window.addTask            = addTask;
@@ -926,6 +1027,7 @@ export default function Home() {
     window.addNews            = addNews;
     window.setAttendance      = setAttendance;
     window.saveMemo           = saveMemo;
+    window.saveLateTime       = saveLateTime;
     window.openSongDetail     = openSongDetail;
     window.closeSongDetail    = closeSongDetail;
     window.savePart           = savePart;
@@ -979,8 +1081,8 @@ export default function Home() {
       if (countdownInterval) clearInterval(countdownInterval);
       const fns = [
         'switchTab','openModal','closeModal','toggleAdmin','submitPin',
-        'addEvent','deleteEvent','toggleTask','addTask','toggleAccordion','addNews',
-        'setAttendance','saveMemo','openSongDetail','closeSongDetail','savePart',
+        'addEvent','openEditEvent','updateEvent','deleteEvent','toggleTask','addTask','toggleAccordion','addNews',
+        'setAttendance','saveMemo','saveLateTime','openSongDetail','closeSongDetail','savePart',
         'addNote','deleteNote','applySettings','addMemberRow','deleteMember',
         'moveSong','addSongRow','deleteSong','addAttendEventRow','deleteAttendEvent',
         'saveLeader','togglePerformer',
@@ -1001,44 +1103,43 @@ export default function Home() {
       </Head>
 
       <div id="app">
-        {/* COUNTDOWN */}
-        <div className="countdown-section">
-          <div className="countdown-title" id="countdown-label">公演まであと</div>
-          <div className="countdown-timer" id="countdown-timer">
-            <div className="countdown-unit">
-              <span className="countdown-num" id="cd-days">0</span>
-              <small>日</small>
+        {/* HEADER + COUNTDOWN 統合 */}
+        <div className="top-section">
+          <header id="app-header">
+            <span className="star-deco">✦</span>
+            <span className="star-deco">★</span>
+            <span className="star-deco">✦</span>
+            <span className="star-deco">★</span>
+            <div className="header-title">それからふくらむ可愛い頬を、</div>
+            <div className="header-subtitle">✿ 10周年公演 ✿</div>
+          </header>
+          <div className="countdown-section">
+            <div className="countdown-title" id="countdown-label">公演まであと</div>
+            <div className="countdown-timer" id="countdown-timer">
+              <div className="countdown-unit">
+                <span className="countdown-num" id="cd-days">0</span>
+                <small>日</small>
+              </div>
+              <span className="countdown-sep">:</span>
+              <div className="countdown-unit">
+                <span className="countdown-num" id="cd-hours">00</span>
+                <small>時間</small>
+              </div>
+              <span className="countdown-sep">:</span>
+              <div className="countdown-unit">
+                <span className="countdown-num" id="cd-mins">00</span>
+                <small>分</small>
+              </div>
+              <span className="countdown-sep">:</span>
+              <div className="countdown-unit">
+                <span className="countdown-num" id="cd-secs">00</span>
+                <small>秒</small>
+              </div>
             </div>
-            <span className="countdown-sep">:</span>
-            <div className="countdown-unit">
-              <span className="countdown-num" id="cd-hours">00</span>
-              <small>時間</small>
-            </div>
-            <span className="countdown-sep">:</span>
-            <div className="countdown-unit">
-              <span className="countdown-num" id="cd-mins">00</span>
-              <small>分</small>
-            </div>
-            <span className="countdown-sep">:</span>
-            <div className="countdown-unit">
-              <span className="countdown-num" id="cd-secs">00</span>
-              <small>秒</small>
-            </div>
+            <div className="countdown-message" id="countdown-message" style={{display:'none'}}></div>
+            <div className="countdown-date" id="countdown-date"></div>
           </div>
-          <div className="countdown-message" id="countdown-message" style={{display:'none'}}></div>
-          <div className="countdown-date" id="countdown-date"></div>
         </div>
-
-        {/* HEADER */}
-        <header id="app-header">
-          <span className="star-deco">✦</span>
-          <span className="star-deco">★</span>
-          <span className="star-deco">✦</span>
-          <span className="star-deco">★</span>
-          <div className="header-title">それからふくらむ可愛い頬を、</div>
-          <div className="header-subtitle">✿ 10周年公演 ✿</div>
-          <button id="admin-btn" className="admin-lock-btn" onClick={() => window.toggleAdmin()}>🔓</button>
-        </header>
 
         {/* TAB NAV */}
         <nav id="tab-nav">
@@ -1055,6 +1156,7 @@ export default function Home() {
 
           {/* TAB: SCHEDULE */}
           <section id="tab-schedule" className="tab-panel active">
+            <div id="recent-news-area" className="recent-news-area"></div>
             <div className="card">
               <div className="calendar-header">
                 <button id="cal-prev">◀</button>
@@ -1120,6 +1222,7 @@ export default function Home() {
                 <span>○ <strong id="count-present">0</strong></span>
                 <span>△ <strong id="count-maybe">0</strong></span>
                 <span>✕ <strong id="count-absent">0</strong></span>
+                <span>遅/早 <strong id="count-late">0</strong></span>
               </div>
               <div className="attend-member-list" id="attend-member-list"></div>
             </div>
@@ -1134,7 +1237,11 @@ export default function Home() {
           </section>
 
           {/* TAB: SETTINGS */}
-          <section id="tab-settings" className="tab-panel admin-only">
+          <section id="tab-settings" className="tab-panel">
+            <div className="card admin-login-card">
+              <button id="admin-btn" className="admin-lock-btn-full" onClick={() => window.toggleAdmin()}>🔓 管理者ログイン</button>
+            </div>
+            <div className="admin-only">
             <div className="card">
               <div className="card-title">公演日設定</div>
               <div className="modal-field">
@@ -1165,6 +1272,7 @@ export default function Home() {
               <button className="btn-secondary" onClick={() => window.addAttendEventRow()}>＋ イベントを追加</button>
             </div>
             <button className="btn-primary btn-apply" onClick={() => window.applySettings()}>変更を適用する</button>
+            </div>{/* end admin-only */}
           </section>
 
         </main>
@@ -1303,9 +1411,19 @@ export default function Home() {
             <label>日付</label>
             <input type="date" id="new-event-date" />
           </div>
+          <div className="modal-field modal-field-row">
+            <div>
+              <label>開始時刻（任意）</label>
+              <input type="time" id="new-event-time" />
+            </div>
+            <div>
+              <label>終了時刻（任意）</label>
+              <input type="time" id="new-event-time-end" />
+            </div>
+          </div>
           <div className="modal-field">
-            <label>時間（任意）</label>
-            <input type="time" id="new-event-time" />
+            <label>場所（任意）</label>
+            <input type="text" id="new-event-place" placeholder="例：〇〇スタジオ" />
           </div>
           <div className="modal-field">
             <label>メモ（任意）</label>
@@ -1314,6 +1432,48 @@ export default function Home() {
           <div className="modal-footer">
             <button className="btn-secondary" onClick={() => window.closeModal('event-add')}>キャンセル</button>
             <button className="btn-primary" onClick={() => window.addEvent()}>追加</button>
+          </div>
+        </div>
+      </div>
+
+      {/* MODAL: EVENT EDIT */}
+      <div id="overlay-event-edit" className="modal-overlay hidden">
+        <div className="modal-backdrop" onClick={() => window.closeModal('event-edit')}></div>
+        <div className="modal-box">
+          <div className="modal-header">
+            <span className="modal-title">予定を編集</span>
+            <button className="modal-close" onClick={() => window.closeModal('event-edit')}>✕</button>
+          </div>
+          <input type="hidden" id="edit-event-id" />
+          <div className="modal-field">
+            <label>イベント名</label>
+            <input type="text" id="edit-event-name" placeholder="例：通し練習" />
+          </div>
+          <div className="modal-field">
+            <label>日付</label>
+            <input type="date" id="edit-event-date" />
+          </div>
+          <div className="modal-field modal-field-row">
+            <div>
+              <label>開始時刻（任意）</label>
+              <input type="time" id="edit-event-time" />
+            </div>
+            <div>
+              <label>終了時刻（任意）</label>
+              <input type="time" id="edit-event-time-end" />
+            </div>
+          </div>
+          <div className="modal-field">
+            <label>場所（任意）</label>
+            <input type="text" id="edit-event-place" placeholder="例：〇〇スタジオ" />
+          </div>
+          <div className="modal-field">
+            <label>メモ（任意）</label>
+            <textarea id="edit-event-memo" placeholder="メモを入力"></textarea>
+          </div>
+          <div className="modal-footer">
+            <button className="btn-secondary" onClick={() => window.closeModal('event-edit')}>キャンセル</button>
+            <button className="btn-primary" onClick={() => window.updateEvent()}>保存</button>
           </div>
         </div>
       </div>
