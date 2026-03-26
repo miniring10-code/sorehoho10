@@ -1605,12 +1605,17 @@ td.selected-day .day-num {
   height: 68px;
   object-fit: contain;
   filter: drop-shadow(0 2px 6px rgba(0,0,0,0.12));
-  transition: transform 0.2s;
   cursor: pointer;
+  animation: hoho-float 3s ease-in-out infinite;
+  will-change: transform;
 }
 .hoho-img:active {
   transform: scale(0.88);
 }
+.hoho-img.anim-eiei     { animation: hoho-eiei     1.0s ease-in-out; }
+.hoho-img.anim-bikkuri  { animation: hoho-bikkuri  0.6s ease-out; }
+.hoho-img.anim-furifuri { animation: hoho-furifuri 1.4s ease-in-out; }
+.hoho-img.anim-spin     { animation: hoho-spin     0.8s ease-in-out; }
 .hoho-bubble {
   background: #fff;
   border: 2px solid var(--accent);
@@ -1638,6 +1643,35 @@ td.selected-day .day-num {
 @keyframes hoho-pop {
   from { opacity: 0; transform: scale(0.85) translateY(4px); }
   to   { opacity: 1; transform: scale(1) translateY(0); }
+}
+@keyframes hoho-float {
+  0%, 100% { transform: translateY(0); }
+  50%       { transform: translateY(-7px); }
+}
+@keyframes hoho-eiei {
+  0%   { transform: translateY(0) rotate(0deg); }
+  25%  { transform: translateY(-28px) rotate(-10deg); }
+  50%  { transform: translateY(-22px) rotate(10deg); }
+  75%  { transform: translateY(-10px) rotate(-5deg); }
+  100% { transform: translateY(0) rotate(0deg); }
+}
+@keyframes hoho-bikkuri {
+  0%   { transform: translateY(0) scale(1); }
+  25%  { transform: translateY(-24px) scale(0.92); }
+  55%  { transform: translateY(-6px) scale(1.06); }
+  100% { transform: translateY(0) scale(1); }
+}
+@keyframes hoho-furifuri {
+  0%, 100% { transform: translateX(0) rotate(0deg); }
+  20%  { transform: translateX(-9px) rotate(-9deg); }
+  40%  { transform: translateX(9px) rotate(9deg); }
+  60%  { transform: translateX(-7px) rotate(-7deg); }
+  80%  { transform: translateX(7px) rotate(7deg); }
+}
+@keyframes hoho-spin {
+  0%   { transform: rotate(0deg) scale(1); }
+  50%  { transform: rotate(180deg) scale(1.12); }
+  100% { transform: rotate(360deg) scale(1); }
 }
 
 /* ===== RECENT NEWS (カレンダー上部) ===== */

@@ -214,6 +214,37 @@ export default function Home() {
       }).join('');
     }
 
+    // ===== HOHO ANIMATION =====
+    const HOHO_ANIMS = ['anim-eiei', 'anim-bikkuri', 'anim-furifuri', 'anim-spin'];
+    let hohoAnimLock = false;
+
+    function playHohoAnim(animClass) {
+      const img = document.getElementById('hoho-img');
+      if (!img || hohoAnimLock) return;
+      hohoAnimLock = true;
+      img.classList.add(animClass);
+      img.addEventListener('animationend', () => {
+        img.classList.remove(animClass);
+        hohoAnimLock = false;
+      }, { once: true });
+    }
+
+    function playRandomHohoAnim() {
+      const anim = HOHO_ANIMS[Math.floor(Math.random() * HOHO_ANIMS.length)];
+      playHohoAnim(anim);
+    }
+
+    function scheduleHohoAnim() {
+      const delay = 15000 + Math.random() * 15000;
+      setTimeout(() => {
+        playRandomHohoAnim();
+        scheduleHohoAnim();
+      }, delay);
+    }
+
+    document.getElementById('hoho-img')?.addEventListener('click', playRandomHohoAnim);
+    scheduleHohoAnim();
+
     // ===== HOHO MASCOT =====
     function updateHohoMessage() {
       const msgEl = document.getElementById('hoho-message');
@@ -1320,7 +1351,7 @@ export default function Home() {
         <div className="hoho-bubble">
           <span id="hoho-message">みんなのこと応援してるよ！✿</span>
         </div>
-        <img src="/hoho.png" alt="ほほちゃん" className="hoho-img" />
+        <img src="/hoho.png" alt="ほほちゃん" className="hoho-img" id="hoho-img" />
       </div>
 
       {/* SETLIST DETAIL SLIDE PANEL */}
