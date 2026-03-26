@@ -1,8 +1,7 @@
 import { useEffect } from 'react';
 import Head from 'next/head';
-import { db, storage } from '../lib/firebase';
+import { db } from '../lib/firebase';
 import { ref, onValue, set, update } from 'firebase/database';
-import { ref as storageRef, uploadBytesResumable, getDownloadURL, deleteObject } from 'firebase/storage';
 
 export default function Home() {
   useEffect(() => {
@@ -177,7 +176,6 @@ export default function Home() {
       songNotes: {},
       songLeaders: {},    // { songId: ['name1','name2','name3'] }
       songPerformers: {}, // { songId: [memberId, ...] }
-      songFiles: {},      // { songId: [{name, url, path, type}] }
       currentSongId: null,
     };
 
@@ -669,65 +667,6 @@ export default function Home() {
       renderPerformers(songId);
       renderParts(songId);
       renderNotes(songId);
-      renderSongFiles(songId);
-    }
-    function renderSongFiles(songId) {
-      const container = document.getElementById('song-files-list');
-      if (!container) return;
-      container.innerHTML = '';
-      const files = state.songFiles[songId] || [];
-      if (files.length === 0) {
-        container.innerHTML = '<div class="song-files-empty">ファイルなし</div>';
-        return;
-      }
-      files.forEach((f, idx) => {
-        const div = document.createElement('div');
-        div.className = 'song-file-item';
-        const icon = f.type && f.type.startsWith('image/') ? '🖼' : '📄';
-        div.innerHTML = `
-          <a href="${f.url}" target="_blank" class="song-file-link">${icon} ${f.name}</a>
-          <button class="btn-icon" onclick="window.deleteSongFile(${songId}, ${idx})">🗑</button>
-        `;
-        container.appendChild(div);
-      });
-    }
-    function uploadSongFile(songId, file) {
-      if (!storage) return alert('Storage未設定');
-      const path = `songs/${songId}/${Date.now()}_${file.name}`;
-      const sRef = storageRef(storage, path);
-      const progressEl = document.getElementById('upload-progress');
-      if (progressEl) { progressEl.style.display = 'block'; progressEl.value = 0; }
-      const task = uploadBytesResumable(sRef, file);
-      task.on('state_changed',
-        snap => {
-          const pct = Math.round(snap.bytesTransferred / snap.totalBytes * 100);
-          if (progressEl) progressEl.value = pct;
-        },
-        err => { alert('アップロード失敗: ' + err.message); if (progressEl) progressEl.style.display = 'none'; },
-        () => {
-          getDownloadURL(task.snapshot.ref).then(url => {
-            if (!state.songFiles[songId]) state.songFiles[songId] = [];
-            state.songFiles[songId].push({ name: file.name, url, path, type: file.type });
-            saveToFirebase('/songFiles', state.songFiles);
-            if (progressEl) progressEl.style.display = 'none';
-            const inp = document.getElementById('song-file-input');
-            if (inp) inp.value = '';
-            renderSongFiles(songId);
-          });
-        }
-      );
-    }
-    function deleteSongFile(songId, idx) {
-      const files = state.songFiles[songId];
-      if (!files || !files[idx]) return;
-      const f = files[idx];
-      if (storage && f.path) {
-        const sRef = storageRef(storage, f.path);
-        deleteObject(sRef).catch(() => {});
-      }
-      files.splice(idx, 1);
-      saveToFirebase('/songFiles', state.songFiles);
-      renderSongFiles(songId);
     }
     function renderSongLeaders(songId) {
       const container = document.getElementById('leaders-row');
@@ -1017,7 +956,6 @@ export default function Home() {
         songNotes:       state.songNotes,
         songLeaders:     state.songLeaders,
         songPerformers:  state.songPerformers,
-        songFiles:       state.songFiles,
         events:          arrToObj(state.events),
         tasks:           arrToObj(state.tasks),
         news:            arrToObj(state.news),
@@ -1063,12 +1001,6 @@ export default function Home() {
         });
       }
       if (data.lateTime)        state.lateTime        = data.lateTime;
-      if (data.songFiles) {
-        state.songFiles = {};
-        Object.entries(data.songFiles).forEach(([sid, val]) => {
-          state.songFiles[Number(sid)] = Array.isArray(val) ? val : Object.values(val);
-        });
-      }
       if (data.events)          state.events          = Object.values(data.events).map(e => ({ time: '', timeEnd: '', place: '', memo: '', ...e }));
       if (data.tasks)           state.tasks           = Object.values(data.tasks);
       if (data.news)            state.news            = Object.values(data.news).map(n => ({ createdAt: null, isNew: false, time: '', ...n }));
@@ -1125,8 +1057,6 @@ export default function Home() {
     window.togglePerformer    = togglePerformer;
     window.addNote            = addNote;
     window.deleteNote         = deleteNote;
-    window.deleteSongFile     = deleteSongFile;
-    window._uploadSongFile    = (file) => uploadSongFile(state.currentSongId, file);
     window.applySettings      = applySettings;
     window.addMemberRow       = addMemberRow;
     window.deleteMember       = deleteMember;
@@ -1175,7 +1105,7 @@ export default function Home() {
         'switchTab','openModal','closeModal','toggleAdmin','submitPin',
         'addEvent','openEditEvent','updateEvent','deleteEvent','toggleTask','addTask','toggleAccordion','addNews',
         'setAttendance','saveMemo','saveLateTime','openSongDetail','closeSongDetail','savePart',
-        'addNote','deleteNote','deleteSongFile','_uploadSongFile','applySettings','addMemberRow','deleteMember',
+        'addNote','deleteNote','applySettings','addMemberRow','deleteMember',
         'moveSong','addSongRow','deleteSong','addAttendEventRow','deleteAttendEvent',
         'saveLeader','togglePerformer',
       ];
@@ -1389,10 +1319,6 @@ export default function Home() {
           <div id="leaders-row" className="leaders-row"></div>
         </div>
         <div className="card">
-          <div className="card-title">出演メンバー</div>
-          <div id="performers-toggle" className="performers-toggle"></div>
-        </div>
-        <div className="card">
           <div className="card-title">パート・フォーメーション</div>
           <table className="parts-table">
             <thead><tr><th>メンバー</th><th>役割</th></tr></thead>
@@ -1408,24 +1334,8 @@ export default function Home() {
           </div>
         </div>
         <div className="card">
-          <div className="card-title">構成表・資料ファイル</div>
-          <div id="song-files-list" className="song-files-list"></div>
-          <div className="file-upload-row">
-            <label className="file-upload-label">
-              <span>📎 ファイルを選択</span>
-              <input
-                type="file"
-                id="song-file-input"
-                accept="image/*,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.zip"
-                style={{display:'none'}}
-                onChange={(e) => {
-                  const f = e.target.files[0];
-                  if (f) window._uploadSongFile && window._uploadSongFile(f);
-                }}
-              />
-            </label>
-            <progress id="upload-progress" max="100" value="0" style={{display:'none', flex:1}}></progress>
-          </div>
+          <div className="card-title">出演メンバー選択</div>
+          <div id="performers-toggle" className="performers-toggle"></div>
         </div>
       </div>
 
