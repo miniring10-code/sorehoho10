@@ -198,6 +198,21 @@ export default function Home() {
       if (post.createdAt) return (Date.now() - post.createdAt) < 3 * 24 * 60 * 60 * 1000;
       return !!post.isNew;
     }
+    // テキストの改行・URLリンクを変換（XSS対策済み）
+    function formatText(text) {
+      if (!text) return '';
+      const urlPattern = /(https?:\/\/[^\s]+)/g;
+      const parts = text.split(urlPattern);
+      return parts.map((part, i) => {
+        if (i % 2 === 1) {
+          const safe = part.replace(/"/g, '&quot;');
+          return `<a href="${safe}" target="_blank" rel="noopener noreferrer" class="text-link">${safe}</a>`;
+        }
+        return part
+          .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+          .replace(/\n/g, '<br>');
+      }).join('');
+    }
 
     // ===== HOHO MASCOT =====
     function updateHohoMessage() {
@@ -365,8 +380,8 @@ export default function Home() {
           const timeStr = ev.time ? (ev.timeEnd ? `${ev.time}〜${ev.timeEnd}` : ev.time) : '';
           div.innerHTML = `
             <div><span class="date-event-name">${ev.name}</span>${timeStr ? `<span class="date-event-time">${timeStr}</span>` : ''}</div>
-            ${ev.place ? `<div class="date-event-memo">📍 ${ev.place}</div>` : ''}
-            ${ev.memo  ? `<div class="date-event-memo">📝 ${ev.memo}</div>` : ''}
+            ${ev.place ? `<div class="date-event-memo">📍 ${formatText(ev.place)}</div>` : ''}
+            ${ev.memo  ? `<div class="date-event-memo text-formatted">📝 ${formatText(ev.memo)}</div>` : ''}
           `;
           list.appendChild(div);
         });
@@ -396,8 +411,8 @@ export default function Home() {
             <span class="event-arrow">›</span>
           </div>
           <div class="event-detail-row hidden-detail">
-            ${ev.place ? `<div class="event-detail-item">📍 ${ev.place}</div>` : ''}
-            ${ev.memo  ? `<div class="event-detail-item">📝 ${ev.memo}</div>` : ''}
+            ${ev.place ? `<div class="event-detail-item">📍 ${formatText(ev.place)}</div>` : ''}
+            ${ev.memo  ? `<div class="event-detail-item text-formatted">📝 ${formatText(ev.memo)}</div>` : ''}
             <div class="event-actions admin-only">
               <button class="btn-secondary btn-sm" onclick="window.openEditEvent(${ev.id})">✏️ 編集</button>
               <button class="btn-icon" onclick="window.deleteEvent(${ev.id})">🗑</button>
@@ -533,7 +548,7 @@ export default function Home() {
             </div>
             <span class="accordion-arrow ${isOpen?'open':''}">▼</span>
           </div>
-          <div class="news-body ${isOpen?'':'hidden'}">${post.body}</div>
+          <div class="news-body text-formatted ${isOpen?'':'hidden'}">${formatText(post.body)}</div>
         `;
         container.appendChild(div);
       });
