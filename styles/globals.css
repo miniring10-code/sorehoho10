@@ -689,6 +689,7 @@ html, body {
   padding: 14px;
   margin: 10px 10px;
   box-shadow: var(--card-shadow);
+  overflow: hidden;
 }
 .card-muted { background: var(--card-muted-bg); }
 .card-title {
@@ -1212,7 +1213,10 @@ html, body {
 .modal-field input, .modal-field textarea, .modal-field select {
   width: 100%;
   max-width: 100%;
+  min-width: 0;
   box-sizing: border-box;
+  -webkit-appearance: none;
+  appearance: none;
   border: 1.5px solid var(--input-border);
   border-radius: 10px;
   padding: 10px 12px;
