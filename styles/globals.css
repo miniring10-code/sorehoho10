@@ -1112,17 +1112,25 @@ html, body {
 
 /* ===== SETTINGS ===== */
 .settings-list { display: flex; flex-direction: column; gap: 6px; margin-bottom: 10px; }
-.settings-row { display: flex; align-items: center; gap: 6px; }
+.settings-row {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  flex-wrap: nowrap;
+  overflow: hidden;
+}
 .settings-input {
   flex: 1;
+  min-width: 0;
   border: 1.5px solid var(--input-border);
   border-radius: 8px;
-  padding: 7px 10px;
-  font-size: 13px;
+  padding: 7px 8px;
+  font-size: 12px;
   color: var(--text);
   background: var(--input-bg);
 }
-.settings-input.sm { flex: 0 0 80px; }
+.settings-input.sm { flex: 0 0 56px; min-width: 0; }
+.settings-row .btn-icon { flex-shrink: 0; padding: 4px 5px; }
 .sort-btns { display: flex; flex-direction: column; gap: 1px; }
 .sort-btns button {
   width: 22px; height: 20px;
@@ -1624,7 +1632,7 @@ td.selected-day .day-num {
   border-radius: var(--card-radius);
   box-shadow: var(--card-shadow);
   padding: 14px 14px 10px;
-  margin: 0 0 10px 0;
+  margin: 10px 10px 0 10px;
 }
 .recent-news-title {
   font-size: 13px;
@@ -1755,6 +1763,53 @@ td.selected-day .day-num {
   flex-wrap: wrap;
   justify-content: center;
   margin-bottom: 14px;
+}
+
+/* ===== SONG FILES ===== */
+.song-files-list { margin-bottom: 10px; }
+.song-files-empty { font-size: 12px; color: var(--text-muted); padding: 4px 0 8px; }
+.song-file-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 0;
+  border-bottom: 1px solid var(--border);
+}
+.song-file-item:last-child { border-bottom: none; }
+.song-file-link {
+  flex: 1;
+  font-size: 13px;
+  color: var(--accent);
+  text-decoration: none;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-weight: 600;
+}
+.song-file-link:hover { text-decoration: underline; }
+.file-upload-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.file-upload-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 14px;
+  background: var(--btn-secondary-bg);
+  color: var(--btn-secondary-fg);
+  border: 1.5px solid var(--btn-secondary-border);
+  border-radius: 10px;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+}
+.file-upload-label:active { opacity: 0.8; }
+#upload-progress {
+  height: 6px;
+  border-radius: 4px;
+  accent-color: var(--accent);
 }
 
 /* ===== MEMO FIELD: SINGLE LINE ===== */
