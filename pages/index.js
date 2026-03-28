@@ -44,6 +44,7 @@ export default function Home() {
 
     // ===== COUNTDOWN =====
     let countdownInterval = null;
+    let newsTimeInterval = null;
     function startCountdown() {
       if (countdownInterval) clearInterval(countdownInterval);
       function tick() {
@@ -147,10 +148,10 @@ export default function Home() {
         { id: 5, date: '2025-11-23', name: '★本番公演★',  time: '15:00', timeEnd: '', place: '', memo: '' },
       ],
       tasks: [
-        { id: 10, name: '衣装発注確認',           cat: '衣装',       done: false },
-        { id: 11, name: 'SNS投稿スケジュール作成', cat: 'sns',        done: false },
-        { id: 12, name: 'チケット販売ページ作成',  cat: 'チケット',   done: false },
-        { id: 13, name: 'スタジオ予約確認',        cat: 'スタジオ予約', done: true },
+        { id: 10, name: '衣装発注確認',           cat: '衣装',       done: false, dueDate: '' },
+        { id: 11, name: 'SNS投稿スケジュール作成', cat: 'sns',        done: false, dueDate: '' },
+        { id: 12, name: 'チケット販売ページ作成',  cat: 'チケット',   done: false, dueDate: '' },
+        { id: 13, name: 'スタジオ予約確認',        cat: 'スタジオ予約', done: true,  dueDate: '' },
       ],
       taskFilter: 'all',
       news: [
@@ -159,6 +160,7 @@ export default function Home() {
         { id: 22, title: 'グッズ制作について',          cat: 'グッズ', body: 'グッズのデザイン案が完成しました。共有フォルダをご確認ください。',                         createdAt: Date.now() - 4*24*60*60*1000 },
       ],
       openNewsId: null,
+      openRecentNewsId: null,
       attendEvents: [
         { id: 0, name: '本番公演',  date: '11/23 15:00〜'      },
         { id: 1, name: '通し練習',  date: '11/16 13:00〜17:00' },
@@ -213,37 +215,6 @@ export default function Home() {
           .replace(/\n/g, '<br>');
       }).join('');
     }
-
-    // ===== HOHO ANIMATION =====
-    const HOHO_ANIMS = ['anim-eiei', 'anim-bikkuri', 'anim-furifuri', 'anim-spin'];
-    let hohoAnimLock = false;
-
-    function playHohoAnim(animClass) {
-      const img = document.getElementById('hoho-img');
-      if (!img || hohoAnimLock) return;
-      hohoAnimLock = true;
-      img.classList.add(animClass);
-      img.addEventListener('animationend', () => {
-        img.classList.remove(animClass);
-        hohoAnimLock = false;
-      }, { once: true });
-    }
-
-    function playRandomHohoAnim() {
-      const anim = HOHO_ANIMS[Math.floor(Math.random() * HOHO_ANIMS.length)];
-      playHohoAnim(anim);
-    }
-
-    function scheduleHohoAnim() {
-      const delay = 15000 + Math.random() * 15000;
-      setTimeout(() => {
-        playRandomHohoAnim();
-        scheduleHohoAnim();
-      }, delay);
-    }
-
-    document.getElementById('hoho-img')?.addEventListener('click', playRandomHohoAnim);
-    scheduleHohoAnim();
 
     // ===== HOHO MASCOT =====
     function updateHohoMessage() {
@@ -320,19 +291,25 @@ export default function Home() {
     function renderRecentNewsInCalendar() {
       const area = document.getElementById('recent-news-area');
       if (!area) return;
-      const recent = [...state.news].slice(0, 3);
+      const recent = [...state.news].sort((a,b) => (b.createdAt||0) - (a.createdAt||0)).slice(0,3);
       if (recent.length === 0) { area.innerHTML = ''; return; }
       area.innerHTML = '<div class="recent-news-title">📢 最新のお知らせ</div>' +
         recent.map(n => {
           const showNew = isNewsNew(n);
           const timeStr = n.createdAt ? formatRelativeTime(n.createdAt) : (n.time || '');
-          return `<div class="recent-news-item" onclick="window.switchTab('news')">
+          const isOpen = state.openRecentNewsId === n.id;
+          return `<div class="recent-news-item" onclick="window.toggleRecentNews(${n.id})">
             <span class="recent-news-cat">${n.cat}</span>
             ${showNew ? '<span class="news-new-badge">NEW</span>' : ''}
             <span class="recent-news-text">${n.title}</span>
             <span class="recent-news-time">${timeStr}</span>
-          </div>`;
+          </div>
+          ${isOpen ? `<div class="recent-news-detail text-formatted">${formatText(n.body)}</div>` : ''}`;
         }).join('');
+    }
+    function toggleRecentNews(newsId) {
+      state.openRecentNewsId = state.openRecentNewsId === newsId ? null : newsId;
+      renderRecentNewsInCalendar();
     }
     function renderCalendar() {
       renderRecentNewsInCalendar();
@@ -517,11 +494,19 @@ export default function Home() {
         row.appendChild(btn);
       });
     }
+    function sortTasksByDue(tasks) {
+      return [...tasks].sort((a, b) => {
+        if (!a.dueDate && !b.dueDate) return 0;
+        if (!a.dueDate) return 1;
+        if (!b.dueDate) return -1;
+        return a.dueDate.localeCompare(b.dueDate);
+      });
+    }
     function renderTasks() {
       const filter = state.taskFilter;
       const filtered = filter === 'all' ? state.tasks : state.tasks.filter(t => t.cat === filter);
-      const inc = filtered.filter(t => !t.done);
-      const com = filtered.filter(t =>  t.done);
+      const inc = sortTasksByDue(filtered.filter(t => !t.done));
+      const com = sortTasksByDue(filtered.filter(t =>  t.done));
       document.getElementById('incomplete-count').textContent = inc.length;
       document.getElementById('complete-count').textContent   = com.length;
       renderTaskList('task-list-incomplete', inc);
@@ -530,13 +515,24 @@ export default function Home() {
     function renderTaskList(listId, tasks) {
       const ul = document.getElementById(listId);
       ul.innerHTML = '';
+      const today = new Date().toISOString().slice(0,10);
       tasks.forEach(t => {
         const li = document.createElement('li');
         li.className = 'task-item';
+        let dueBadge = '';
+        if (t.dueDate) {
+          const isOverdue = !t.done && t.dueDate < today;
+          const isSoon    = !t.done && !isOverdue && t.dueDate <= new Date(Date.now()+3*86400000).toISOString().slice(0,10);
+          const parts = t.dueDate.split('-');
+          const label = `${parseInt(parts[1])}/${parseInt(parts[2])}`;
+          dueBadge = `<span class="task-due${isOverdue?' overdue':isSoon?' soon':''}">${label}</span>`;
+        }
         li.innerHTML = `
           <button class="task-toggle ${t.done?'done':''}" onclick="window.toggleTask(${t.id})">${t.done?'✓':''}</button>
           <span class="task-name ${t.done?'done':''}">${t.name}</span>
+          ${dueBadge}
           <span class="task-cat-badge">${t.cat}</span>
+          <button class="btn-icon admin-only" onclick="window.openEditTask(${t.id})">✏️</button>
         `;
         ul.appendChild(li);
       });
@@ -546,13 +542,41 @@ export default function Home() {
       if (t) { t.done = !t.done; saveToFirebase('/tasks', arrToObj(state.tasks)); renderTasks(); }
     }
     function addTask() {
-      const name = document.getElementById('new-task-name').value.trim();
-      const cat  = document.getElementById('new-task-cat').value;
+      const name    = document.getElementById('new-task-name').value.trim();
+      const cat     = document.getElementById('new-task-cat').value;
+      const dueDate = document.getElementById('new-task-due').value;
       if (!name) return alert('タスク名を入力してください');
-      state.tasks.push({ id: uid(), name, cat, done: false });
+      state.tasks.push({ id: uid(), name, cat, done: false, dueDate: dueDate || '' });
       saveToFirebase('/tasks', arrToObj(state.tasks));
       closeModal('task-add');
       document.getElementById('new-task-name').value = '';
+      document.getElementById('new-task-due').value  = '';
+      renderTasks();
+    }
+    function openEditTask(id) {
+      const t = state.tasks.find(t => t.id === id);
+      if (!t) return;
+      document.getElementById('edit-task-id').value      = id;
+      document.getElementById('edit-task-name').value    = t.name;
+      document.getElementById('edit-task-cat').value     = t.cat;
+      document.getElementById('edit-task-due').value     = t.dueDate || '';
+      openModal('task-edit');
+    }
+    function updateTask() {
+      const id = parseInt(document.getElementById('edit-task-id').value);
+      const t  = state.tasks.find(t => t.id === id);
+      if (!t) return;
+      t.name    = document.getElementById('edit-task-name').value.trim() || t.name;
+      t.cat     = document.getElementById('edit-task-cat').value;
+      t.dueDate = document.getElementById('edit-task-due').value;
+      saveToFirebase('/tasks', arrToObj(state.tasks));
+      closeModal('task-edit');
+      renderTasks();
+    }
+    function deleteTask(id) {
+      state.tasks = state.tasks.filter(t => t.id !== id);
+      saveToFirebase('/tasks', arrToObj(state.tasks));
+      closeModal('task-edit');
       renderTasks();
     }
 
@@ -560,7 +584,8 @@ export default function Home() {
     function renderNews() {
       const container = document.getElementById('news-list');
       container.innerHTML = '';
-      state.news.forEach(post => {
+      const sorted = [...state.news].sort((a,b) => (b.createdAt||0) - (a.createdAt||0));
+      sorted.forEach(post => {
         const div = document.createElement('div');
         div.className = 'news-item';
         div.dataset.id = post.id;
@@ -577,7 +602,10 @@ export default function Home() {
               <div class="news-title">${post.title}</div>
               <div class="news-time">${timeStr}</div>
             </div>
-            <span class="accordion-arrow ${isOpen?'open':''}">▼</span>
+            <div class="news-header-right">
+              <button class="btn-icon admin-only" onclick="event.stopPropagation();window.openEditNews(${post.id})">✏️</button>
+              <span class="accordion-arrow ${isOpen?'open':''}">▼</span>
+            </div>
           </div>
           <div class="news-body text-formatted ${isOpen?'':'hidden'}">${formatText(post.body)}</div>
         `;
@@ -599,6 +627,35 @@ export default function Home() {
       document.getElementById('new-news-title').value = '';
       document.getElementById('new-news-body').value = '';
       renderNews();
+      renderRecentNewsInCalendar();
+    }
+    function openEditNews(id) {
+      const post = state.news.find(n => n.id === id);
+      if (!post) return;
+      document.getElementById('edit-news-id').value    = id;
+      document.getElementById('edit-news-title').value = post.title;
+      document.getElementById('edit-news-body').value  = post.body || '';
+      document.getElementById('edit-news-cat').value   = post.cat;
+      openModal('news-edit');
+    }
+    function updateNews() {
+      const id   = parseInt(document.getElementById('edit-news-id').value);
+      const post = state.news.find(n => n.id === id);
+      if (!post) return;
+      post.title = document.getElementById('edit-news-title').value.trim() || post.title;
+      post.body  = document.getElementById('edit-news-body').value.trim();
+      post.cat   = document.getElementById('edit-news-cat').value;
+      saveToFirebase('/news', arrToObj(state.news));
+      closeModal('news-edit');
+      renderNews();
+      renderRecentNewsInCalendar();
+    }
+    function deleteNews(id) {
+      state.news = state.news.filter(n => n.id !== id);
+      saveToFirebase('/news', arrToObj(state.news));
+      closeModal('news-edit');
+      renderNews();
+      renderRecentNewsInCalendar();
     }
 
     // ===== ATTENDANCE =====
@@ -1048,7 +1105,7 @@ export default function Home() {
       }
       if (data.lateTime)        state.lateTime        = data.lateTime;
       if (data.events)          state.events          = Object.values(data.events).map(e => ({ time: '', timeEnd: '', place: '', memo: '', ...e }));
-      if (data.tasks)           state.tasks           = Object.values(data.tasks);
+      if (data.tasks)           state.tasks           = Object.values(data.tasks).map(t => ({ dueDate: '', ...t }));
       if (data.news)            state.news            = Object.values(data.news).map(n => ({ createdAt: null, isNew: false, time: '', ...n }));
       if (data.members)         state.members         = Object.values(data.members).map(m => ({ generation: 1, ...m }));
       if (data.songs)           state.songs           = Object.values(data.songs).map(s => ({ section: '', ...s }));
@@ -1091,8 +1148,15 @@ export default function Home() {
     window.deleteEvent        = deleteEvent;
     window.toggleTask         = toggleTask;
     window.addTask            = addTask;
+    window.openEditTask       = openEditTask;
+    window.updateTask         = updateTask;
+    window.deleteTask         = deleteTask;
     window.toggleAccordion    = toggleAccordion;
     window.addNews            = addNews;
+    window.openEditNews       = openEditNews;
+    window.updateNews         = updateNews;
+    window.deleteNews         = deleteNews;
+    window.toggleRecentNews   = toggleRecentNews;
     window.setAttendance      = setAttendance;
     window.saveMemo           = saveMemo;
     window.saveLateTime       = saveLateTime;
@@ -1111,6 +1175,12 @@ export default function Home() {
     window.deleteSong         = deleteSong;
     window.addAttendEventRow  = addAttendEventRow;
     window.deleteAttendEvent  = deleteAttendEvent;
+
+    // お知らせ経過時間を60秒ごとに更新
+    newsTimeInterval = setInterval(() => {
+      renderNews();
+      renderRecentNewsInCalendar();
+    }, 60000);
 
     // ===== INIT =====
     document.querySelectorAll('.tab-btn').forEach(btn => {
@@ -1147,9 +1217,12 @@ export default function Home() {
     return () => {
       if (typeof unsubscribe === 'function') unsubscribe();
       if (countdownInterval) clearInterval(countdownInterval);
+      if (newsTimeInterval) clearInterval(newsTimeInterval);
       const fns = [
         'switchTab','openModal','closeModal','toggleAdmin','submitPin',
-        'addEvent','openEditEvent','updateEvent','deleteEvent','toggleTask','addTask','toggleAccordion','addNews',
+        'addEvent','openEditEvent','updateEvent','deleteEvent',
+        'toggleTask','addTask','openEditTask','updateTask','deleteTask',
+        'toggleAccordion','addNews','openEditNews','updateNews','deleteNews','toggleRecentNews',
         'setAttendance','saveMemo','saveLateTime','openSongDetail','closeSongDetail','savePart',
         'addNote','deleteNote','applySettings','addMemberRow','deleteMember',
         'moveSong','addSongRow','deleteSong','addAttendEventRow','deleteAttendEvent',
@@ -1351,7 +1424,7 @@ export default function Home() {
         <div className="hoho-bubble">
           <span id="hoho-message">みんなのこと応援してるよ！✿</span>
         </div>
-        <img src="/hoho.png" alt="ほほちゃん" className="hoho-img" id="hoho-img" />
+        <img src="/hoho.png" alt="ほほちゃん" className="hoho-img" />
       </div>
 
       {/* SETLIST DETAIL SLIDE PANEL */}
@@ -1365,19 +1438,19 @@ export default function Home() {
           <div id="leaders-row" className="leaders-row"></div>
         </div>
         <div className="card">
-          <div className="card-title">パート・フォーメーション</div>
-          <table className="parts-table">
-            <thead><tr><th>メンバー</th><th>役割</th></tr></thead>
-            <tbody id="parts-table-body"></tbody>
-          </table>
-        </div>
-        <div className="card">
           <div className="card-title">連絡事項</div>
           <div className="notes-list" id="notes-list"></div>
           <div className="note-add-row">
             <input type="text" id="note-input" placeholder="連絡事項を追加..." />
             <button className="btn-primary" onClick={() => window.addNote()}>追加</button>
           </div>
+        </div>
+        <div className="card">
+          <div className="card-title">パート・フォーメーション</div>
+          <table className="parts-table">
+            <thead><tr><th>メンバー</th><th>役割</th></tr></thead>
+            <tbody id="parts-table-body"></tbody>
+          </table>
         </div>
         <div className="card">
           <div className="card-title">出演メンバー選択</div>
@@ -1426,9 +1499,48 @@ export default function Home() {
               <option>スタジオ予約</option><option>スケジュール</option>
             </select>
           </div>
+          <div className="modal-field">
+            <label>期日（任意）</label>
+            <input type="date" id="new-task-due" />
+          </div>
           <div className="modal-footer">
             <button className="btn-secondary" onClick={() => window.closeModal('task-add')}>キャンセル</button>
             <button className="btn-primary" onClick={() => window.addTask()}>追加</button>
+          </div>
+        </div>
+      </div>
+
+      {/* MODAL: TASK EDIT */}
+      <div id="overlay-task-edit" className="modal-overlay hidden">
+        <div className="modal-backdrop" onClick={() => window.closeModal('task-edit')}></div>
+        <div className="modal-box">
+          <div className="modal-header">
+            <span className="modal-title">タスクを編集</span>
+            <button className="modal-close" onClick={() => window.closeModal('task-edit')}>✕</button>
+          </div>
+          <input type="hidden" id="edit-task-id" />
+          <div className="modal-field">
+            <label>タスク名</label>
+            <input type="text" id="edit-task-name" placeholder="タスク名を入力" />
+          </div>
+          <div className="modal-field">
+            <label>カテゴリ</label>
+            <select id="edit-task-cat">
+              <option>sns</option><option>会場</option><option>衣装</option>
+              <option>クリエイティブ</option><option>現役連絡</option><option>ロゴ</option>
+              <option>kv</option><option>演出</option><option>音源</option>
+              <option>チケット</option><option>グッズ</option><option>お金</option>
+              <option>スタジオ予約</option><option>スケジュール</option>
+            </select>
+          </div>
+          <div className="modal-field">
+            <label>期日（任意）</label>
+            <input type="date" id="edit-task-due" />
+          </div>
+          <div className="modal-footer">
+            <button className="btn-danger" onClick={() => window.deleteTask(parseInt(document.getElementById('edit-task-id').value))}>🗑 削除</button>
+            <button className="btn-secondary" onClick={() => window.closeModal('task-edit')}>キャンセル</button>
+            <button className="btn-primary" onClick={() => window.updateTask()}>保存</button>
           </div>
         </div>
       </div>
@@ -1459,6 +1571,38 @@ export default function Home() {
           <div className="modal-footer">
             <button className="btn-secondary" onClick={() => window.closeModal('news-add')}>キャンセル</button>
             <button className="btn-primary" onClick={() => window.addNews()}>投稿</button>
+          </div>
+        </div>
+      </div>
+
+      {/* MODAL: NEWS EDIT */}
+      <div id="overlay-news-edit" className="modal-overlay hidden">
+        <div className="modal-backdrop" onClick={() => window.closeModal('news-edit')}></div>
+        <div className="modal-box">
+          <div className="modal-header">
+            <span className="modal-title">お知らせを編集</span>
+            <button className="modal-close" onClick={() => window.closeModal('news-edit')}>✕</button>
+          </div>
+          <input type="hidden" id="edit-news-id" />
+          <div className="modal-field">
+            <label>タイトル</label>
+            <input type="text" id="edit-news-title" placeholder="タイトルを入力" />
+          </div>
+          <div className="modal-field">
+            <label>詳細</label>
+            <textarea id="edit-news-body" placeholder="本文を入力"></textarea>
+          </div>
+          <div className="modal-field">
+            <label>カテゴリ</label>
+            <select id="edit-news-cat">
+              <option>全体</option><option>衣装</option><option>練習</option>
+              <option>会場</option><option>グッズ</option>
+            </select>
+          </div>
+          <div className="modal-footer">
+            <button className="btn-danger" onClick={() => window.deleteNews(parseInt(document.getElementById('edit-news-id').value))}>🗑 削除</button>
+            <button className="btn-secondary" onClick={() => window.closeModal('news-edit')}>キャンセル</button>
+            <button className="btn-primary" onClick={() => window.updateNews()}>保存</button>
           </div>
         </div>
       </div>
