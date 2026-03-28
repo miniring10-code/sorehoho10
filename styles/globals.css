@@ -849,9 +849,7 @@ html, body {
 }
 .task-list { list-style: none; }
 .task-item {
-  display: flex;
-  align-items: center;
-  gap: 8px;
+  display: block;
   padding: 9px 0;
   border-bottom: 1px solid var(--border);
 }
@@ -1839,6 +1837,42 @@ td.selected-day .day-num {
   color: var(--text);
   font-size: 12px;
   font-family: inherit;
+}
+
+/* ===== TASK LIST: COLLAPSIBLE ===== */
+.task-collapsible .task-detail-row { display: none; }
+.task-collapsible.open .task-detail-row { display: block; }
+.task-main-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  padding: 2px 0;
+}
+.task-arrow {
+  font-size: 18px;
+  color: var(--text-muted);
+  transition: transform 0.2s;
+  line-height: 1;
+  margin-left: auto;
+  flex-shrink: 0;
+}
+.task-collapsible.open .task-arrow { transform: rotate(90deg); }
+.task-detail-row {
+  padding: 8px 4px 4px;
+  border-top: 1px dashed var(--border);
+  margin-top: 6px;
+}
+.task-detail-item {
+  font-size: 12px;
+  color: var(--text-sub);
+  margin-bottom: 3px;
+}
+.task-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 6px;
 }
 
 /* ===== TASK DUE DATE BADGE ===== */

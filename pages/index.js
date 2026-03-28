@@ -275,8 +275,10 @@ export default function Home() {
     }
 
     // ===== TAB =====
+    const VALID_TABS = ['schedule','tasks','news','attend','setlist','settings'];
     function switchTab(tabId) {
       state.currentTab = tabId;
+      if (location.hash !== '#' + tabId) location.hash = tabId;
       document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
       document.getElementById('tab-' + tabId).classList.add('active');
       document.querySelectorAll('.tab-btn').forEach(b => b.classList.toggle('active', b.dataset.tab === tabId));
@@ -518,21 +520,32 @@ export default function Home() {
       const today = new Date().toISOString().slice(0,10);
       tasks.forEach(t => {
         const li = document.createElement('li');
-        li.className = 'task-item';
+        li.className = 'task-item task-collapsible';
         let dueBadge = '';
+        let dueDateText = '期日: 未設定';
         if (t.dueDate) {
           const isOverdue = !t.done && t.dueDate < today;
           const isSoon    = !t.done && !isOverdue && t.dueDate <= new Date(Date.now()+3*86400000).toISOString().slice(0,10);
           const parts = t.dueDate.split('-');
           const label = `${parseInt(parts[1])}/${parseInt(parts[2])}`;
           dueBadge = `<span class="task-due${isOverdue?' overdue':isSoon?' soon':''}">${label}</span>`;
+          dueDateText = `📅 期日: ${parseInt(parts[0])}年${parseInt(parts[1])}月${parseInt(parts[2])}日${isOverdue?' ⚠️期限切れ':isSoon?' ⚠️まもなく':''}`;
         }
         li.innerHTML = `
-          <button class="task-toggle ${t.done?'done':''}" onclick="window.toggleTask(${t.id})">${t.done?'✓':''}</button>
-          <span class="task-name ${t.done?'done':''}">${t.name}</span>
-          ${dueBadge}
-          <span class="task-cat-badge">${t.cat}</span>
-          <button class="btn-icon admin-only" onclick="window.openEditTask(${t.id})">✏️</button>
+          <div class="task-main-row" onclick="this.closest('.task-collapsible').classList.toggle('open')">
+            <button class="task-toggle ${t.done?'done':''} admin-only" onclick="event.stopPropagation();window.toggleTask(${t.id})">${t.done?'✓':''}</button>
+            <span class="task-name ${t.done?'done':''}">${t.name}</span>
+            ${dueBadge}
+            <span class="task-cat-badge">${t.cat}</span>
+            <span class="task-arrow">›</span>
+          </div>
+          <div class="task-detail-row">
+            <div class="task-detail-item">${dueDateText}</div>
+            <div class="task-detail-item">📂 カテゴリ: ${t.cat}</div>
+            <div class="task-actions admin-only">
+              <button class="btn-secondary btn-sm" onclick="window.openEditTask(${t.id})">✏️ 編集・削除</button>
+            </div>
+          </div>
         `;
         ul.appendChild(li);
       });
@@ -1047,7 +1060,7 @@ export default function Home() {
 
     function saveToFirebase(path, data) {
       if (!db) return;
-      update(ref(db, path), data);
+      set(ref(db, path), data);
     }
 
     function saveAllToFirebase() {
@@ -1106,7 +1119,7 @@ export default function Home() {
       if (data.lateTime)        state.lateTime        = data.lateTime;
       if (data.events)          state.events          = Object.values(data.events).map(e => ({ time: '', timeEnd: '', place: '', memo: '', ...e }));
       if (data.tasks)           state.tasks           = Object.values(data.tasks).map(t => ({ dueDate: '', ...t }));
-      if (data.news)            state.news            = Object.values(data.news).map(n => ({ createdAt: null, isNew: false, time: '', ...n }));
+      if (data.news)            state.news            = Object.values(data.news).map(n => ({ isNew: false, time: '', ...n, createdAt: (n.createdAt != null) ? n.createdAt : (Date.now() - 30*24*60*60*1000) }));
       if (data.members)         state.members         = Object.values(data.members).map(m => ({ generation: 1, ...m }));
       if (data.songs)           state.songs           = Object.values(data.songs).map(s => ({ section: '', ...s }));
       if (data.attendEvents)    state.attendEvents    = Object.values(data.attendEvents);
@@ -1212,6 +1225,10 @@ export default function Home() {
     startCountdown();
     applyAdminMode();
     updateHohoMessage();
+
+    // ハッシュからタブを復元
+    const savedTab = location.hash.slice(1);
+    if (VALID_TABS.includes(savedTab)) switchTab(savedTab);
 
     // ===== CLEANUP =====
     return () => {
