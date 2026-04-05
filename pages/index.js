@@ -10,6 +10,7 @@ export default function Home() {
 
     // ===== ADMIN MODE =====
     let isAdmin = sessionStorage.getItem('sorehoho-admin') === 'true';
+    state.myMemberId = parseInt(localStorage.getItem('sorehoho_my_member') || '') || null;
     function applyAdminMode() {
       const btn = document.getElementById('admin-btn');
       if (isAdmin) {
@@ -174,6 +175,8 @@ export default function Home() {
       },
       memos: {},
       lateTime: {},
+      attendUpdatedAt: {},
+      myMemberId: null,
       songParts: {},
       songNotes: {},
       songLeaders: {},    // { songId: ['name1','name2','name3'] }
@@ -695,32 +698,54 @@ export default function Home() {
       document.getElementById('count-maybe').textContent   = counts.maybe;
       document.getElementById('count-absent').textContent  = counts.absent;
       document.getElementById('count-late').textContent    = counts.late;
+
+      // 自分の名前セレクトボックスを更新
+      const sel = document.getElementById('my-member-select');
+      if (sel) {
+        sel.innerHTML = '<option value="">-- 選択してください --</option>' +
+          state.members.map(m => `<option value="${m.id}" ${state.myMemberId === m.id ? 'selected' : ''}>${m.name}</option>`).join('');
+      }
+
       const container = document.getElementById('attend-member-list');
       container.innerHTML = '';
       state.members.forEach(m => {
         const cur = state.attendance[`${eid}-${m.id}`] || 'absent';
         const lt  = state.lateTime[`${eid}-${m.id}`] || '';
+        const updatedAt = state.attendUpdatedAt[`${eid}-${m.id}`];
+        const updatedText = updatedAt ? `<div class="attend-updated-at">更新: ${formatRelativeTime(updatedAt)}</div>` : '';
+        const canEdit = isAdmin || state.myMemberId === m.id;
+        const ro = canEdit ? '' : 'disabled class="btn-readonly"';
         const div = document.createElement('div');
         div.className = 'attend-row';
         div.innerHTML = `
           <div class="attend-row-top">
             <span class="member-name"><span class="gen-badge">${m.generation || ''}期</span>${m.name}${m.isLocal ? '<span class="local-badge">地方</span>' : ''}</span>
             <div class="attend-btns">
-              <button class="attend-btn ${cur==='present'?'active-present':''}" onclick="window.setAttendance(${m.id},'present')">○</button>
-              <button class="attend-btn ${cur==='maybe'  ?'active-maybe'  :''}" onclick="window.setAttendance(${m.id},'maybe')">△</button>
-              <button class="attend-btn ${cur==='absent' ?'active-absent' :''}" onclick="window.setAttendance(${m.id},'absent')">✕</button>
-              <button class="attend-btn attend-btn-late ${cur==='late'?'active-late':''}" onclick="window.setAttendance(${m.id},'late')">遅/早</button>
+              <button class="attend-btn ${cur==='present'?'active-present':''}" onclick="window.setAttendance(${m.id},'present')" ${ro}>○</button>
+              <button class="attend-btn ${cur==='maybe'  ?'active-maybe'  :''}" onclick="window.setAttendance(${m.id},'maybe')" ${ro}>△</button>
+              <button class="attend-btn ${cur==='absent' ?'active-absent' :''}" onclick="window.setAttendance(${m.id},'absent')" ${ro}>✕</button>
+              <button class="attend-btn attend-btn-late ${cur==='late'?'active-late':''}" onclick="window.setAttendance(${m.id},'late')" ${ro}>遅/早</button>
             </div>
           </div>
-          ${cur === 'late' ? `<div class="late-time-row"><input type="text" class="late-time-input" placeholder="例：17:00〜 / 〜19:00早退" value="${lt}" onchange="window.saveLateTime(${m.id},this.value)" /></div>` : ''}
-          ${m.isLocal ? `<input type="text" class="memo-field-single" placeholder="上京メモ（新幹線・宿泊など）" value="${(state.memos[eid+'-'+m.id]||'').replace(/"/g,'&quot;')}" onchange="window.saveMemo(${m.id},this.value)" />` : ''}
+          ${updatedText}
+          ${cur === 'late' ? `<div class="late-time-row"><input type="text" class="late-time-input" placeholder="例：17:00〜 / 〜19:00早退" value="${lt}" onchange="window.saveLateTime(${m.id},this.value)" ${canEdit ? '' : 'disabled'} /></div>` : ''}
+          ${m.isLocal ? `<input type="text" class="memo-field-single" placeholder="上京メモ（新幹線・宿泊など）" value="${(state.memos[eid+'-'+m.id]||'').replace(/"/g,'&quot;')}" onchange="window.saveMemo(${m.id},this.value)" ${canEdit ? '' : 'disabled'} />` : ''}
         `;
         container.appendChild(div);
       });
     }
+    function setMyMember(id) {
+      state.myMemberId = id ? parseInt(id) : null;
+      if (id) localStorage.setItem('sorehoho_my_member', id);
+      else localStorage.removeItem('sorehoho_my_member');
+      renderAttendance();
+    }
     function setAttendance(memberId, value) {
-      state.attendance[`${state.currentAttendEvent}-${memberId}`] = value;
+      const key = `${state.currentAttendEvent}-${memberId}`;
+      state.attendance[key] = value;
+      state.attendUpdatedAt[key] = Date.now();
       saveToFirebase('/attendance', state.attendance);
+      saveToFirebase('/attendUpdatedAt', state.attendUpdatedAt);
       renderAttendance();
     }
     function saveMemo(memberId, value) {
@@ -1066,6 +1091,7 @@ export default function Home() {
     function saveAllToFirebase() {
       set(ref(db, '/'), {
         attendance:      state.attendance,
+        attendUpdatedAt: state.attendUpdatedAt,
         memos:           state.memos,
         lateTime:        state.lateTime,
         songParts:       state.songParts,
@@ -1096,6 +1122,7 @@ export default function Home() {
       }
       // Firebaseのデータでstateを更新
       if (data.attendance)      state.attendance      = data.attendance;
+      if (data.attendUpdatedAt) state.attendUpdatedAt = data.attendUpdatedAt;
       if (data.memos)           state.memos           = data.memos;
       if (data.songParts)       state.songParts       = data.songParts;
       if (data.songNotes) {
@@ -1171,6 +1198,7 @@ export default function Home() {
     window.deleteNews         = deleteNews;
     window.toggleRecentNews   = toggleRecentNews;
     window.setAttendance      = setAttendance;
+    window.setMyMember        = setMyMember;
     window.saveMemo           = saveMemo;
     window.saveLateTime       = saveLateTime;
     window.openSongDetail     = openSongDetail;
@@ -1374,6 +1402,14 @@ export default function Home() {
             <div className="card">
               <div className="card-title">イベント選択</div>
               <div className="inner-tab-row" id="attend-event-tabs"></div>
+            </div>
+            <div className="card">
+              <div className="my-member-selector">
+                <span className="my-member-label">自分の名前：</span>
+                <select id="my-member-select" onChange="window.setMyMember(this.value)">
+                  <option value="">-- 選択してください --</option>
+                </select>
+              </div>
             </div>
             <div className="card">
               <div className="attend-summary">
