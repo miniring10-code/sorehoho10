@@ -10,7 +10,6 @@ export default function Home() {
 
     // ===== ADMIN MODE =====
     let isAdmin = sessionStorage.getItem('sorehoho-admin') === 'true';
-    state.myMemberId = parseInt(localStorage.getItem('sorehoho_my_member') || '') || null;
     function applyAdminMode() {
       const btn = document.getElementById('admin-btn');
       if (isAdmin) {
@@ -183,6 +182,8 @@ export default function Home() {
       songPerformers: {}, // { songId: [memberId, ...] }
       currentSongId: null,
     };
+
+    state.myMemberId = parseInt(localStorage.getItem('sorehoho_my_member') || '') || null;
 
     const TASK_CATS = ['all','sns','会場','衣装','クリエイティブ','現役連絡','ロゴ','kv','演出','音源','チケット','グッズ','お金','スタジオ予約','スケジュール'];
 
