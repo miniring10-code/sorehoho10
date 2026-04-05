@@ -714,17 +714,18 @@ export default function Home() {
         const updatedAt = state.attendUpdatedAt[`${eid}-${m.id}`];
         const updatedText = updatedAt ? `<div class="attend-updated-at">更新: ${formatRelativeTime(updatedAt)}</div>` : '';
         const canEdit = isAdmin || state.myMemberId === m.id;
-        const ro = canEdit ? '' : 'disabled class="btn-readonly"';
+        const dis = canEdit ? '' : 'disabled';
+        const ro  = canEdit ? '' : 'btn-readonly';
         const div = document.createElement('div');
         div.className = 'attend-row';
         div.innerHTML = `
           <div class="attend-row-top">
             <span class="member-name"><span class="gen-badge">${m.generation || ''}期</span>${m.name}${m.isLocal ? '<span class="local-badge">地方</span>' : ''}</span>
             <div class="attend-btns">
-              <button class="attend-btn ${cur==='present'?'active-present':''}" onclick="window.setAttendance(${m.id},'present')" ${ro}>○</button>
-              <button class="attend-btn ${cur==='maybe'  ?'active-maybe'  :''}" onclick="window.setAttendance(${m.id},'maybe')" ${ro}>△</button>
-              <button class="attend-btn ${cur==='absent' ?'active-absent' :''}" onclick="window.setAttendance(${m.id},'absent')" ${ro}>✕</button>
-              <button class="attend-btn attend-btn-late ${cur==='late'?'active-late':''}" onclick="window.setAttendance(${m.id},'late')" ${ro}>遅/早</button>
+              <button class="attend-btn ${cur==='present'?'active-present':''} ${ro}" onclick="window.setAttendance(${m.id},'present')" ${dis}>○</button>
+              <button class="attend-btn ${cur==='maybe'  ?'active-maybe'  :''} ${ro}" onclick="window.setAttendance(${m.id},'maybe')" ${dis}>△</button>
+              <button class="attend-btn ${cur==='absent' ?'active-absent' :''} ${ro}" onclick="window.setAttendance(${m.id},'absent')" ${dis}>✕</button>
+              <button class="attend-btn attend-btn-late ${cur==='late'?'active-late':''} ${ro}" onclick="window.setAttendance(${m.id},'late')" ${dis}>遅/早</button>
             </div>
           </div>
           ${updatedText}
@@ -1406,7 +1407,7 @@ export default function Home() {
             <div className="card">
               <div className="my-member-selector">
                 <span className="my-member-label">自分の名前：</span>
-                <select id="my-member-select" onChange="window.setMyMember(this.value)">
+                <select id="my-member-select" onChange={(e) => window.setMyMember(e.target.value)}>
                   <option value="">-- 選択してください --</option>
                 </select>
               </div>
