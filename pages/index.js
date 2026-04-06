@@ -133,9 +133,9 @@ export default function Home() {
         { id: 13, title: '疾走Dreamer',            artist: 'JAMS',             section: '既存' },
         { id: 14, title: 'NEW ERA PUNCH',          artist: 'JAMS',             section: '既存' },
         { id: 15, title: 'まほろばアスタリスク?', artist: '≠ME',              section: '既存' },
-        { id: 16, title: 'とくべチュ、して',       artist: '?',                section: '既存' },
+        { id: 16, title: 'とくべチュ、して(?)',      artist: '未定',             section: '既存' },
         { id: 17, title: 'A INNOCENCE',            artist: 'ZOC',              section: 'ラスト' },
-        { id: 18, title: '=LOVE',                  artist: '=LOVE',            section: 'ラスト' },
+        { id: 18, title: '＝LOVE',                 artist: '＝LOVE',           section: 'ラスト' },
         { id: 19, title: '名残り桜',               artist: 'AKB48',            section: 'ラスト' },
         { id: 20, title: 'YOZORA',                 artist: 'アイドルカレッジ', section: 'アンコール' },
         { id: 21, title: '47の素敵な街へ',         artist: 'AKB48',            section: 'アンコール' },
@@ -1200,6 +1200,55 @@ export default function Home() {
         });
       }
       if (data.lateTime)        state.lateTime        = data.lateTime;
+
+      // ===== スプレッドシートのセトリデータをシード =====
+      const SEED_LEADERS = {
+        1:  ['みかめろ','ゆいまる',''],  2:  ['おりざ','',''],
+        3:  ['みかめろ','ゆいまる',''],  4:  ['りんりん','',''],
+        5:  ['あっきぃ','',''],          6:  ['りんりん','',''],
+        7:  ['りーな','',''],            8:  ['りーな','',''],
+        9:  ['あっきぃ','',''],          10: ['あっきぃ','',''],
+        11: ['みかめろ','',''],          12: ['おりざ','',''],
+        15: ['あいら','みづき',''],      17: ['みかめろ','',''],
+        19: ['あっきぃ','',''],          20: ['ゆりまる','',''],
+        21: ['ゆいまる','みかめろ',''],
+      };
+      // 確定メンバー（スプレッドシートの「確定メンバー」列）
+      // メンバーID: 1:りーな 2:ゆりまる 3:さわ 4:みかめろ 5:まり 6:みさき
+      //             7:あっきぃ 8:もえ 9:みく 10:あや 11:おりざ 12:にゃん
+      //             13:りんりん 14:さな 15:カナメ 16:やなぎ 17:ほの
+      //             18:ゆいまる 19:すずめ 20:あいら 21:みづき 22:みゅう
+      const SEED_PERFORMERS = {
+        2:  [11,1,5,6,7,8,14],          // 超めでたいソング
+        4:  [13,6,20,21,22],            // 倍々FIGHT!
+        5:  [7,1,6,4,13,12,11,15,18,19],// 盛れ!ミ・アモーレ
+        6:  [13,4,8,17,14,15],          // SHOUT
+        7:  [1,2,5,6,7,8,11,12,21,22],  // ガールズルール
+        8:  [1,2,5,6,4,12],             // Cheeky Dreamer
+        10: [7,4,9,13,20],              // 僕らはここにいる
+        11: [4,2,1,5,8,9,11,15,14,12],  // サヨナラの意味
+        17: [4,7,13,15,20,22],          // A INNOCENCE
+        19: [7,1,2,4,11,15,14,12,18,21],// 名残り桜
+        20: [2,1,5,4,7,9,14,16,12,18,22],// YOZORA
+      };
+      let seeded = false;
+      Object.entries(SEED_LEADERS).forEach(([id, leaders]) => {
+        const sid = Number(id);
+        if (!state.songLeaders[sid] || !state.songLeaders[sid].some(l => l)) {
+          state.songLeaders[sid] = leaders; seeded = true;
+        }
+      });
+      Object.entries(SEED_PERFORMERS).forEach(([id, performers]) => {
+        const sid = Number(id);
+        if (!state.songPerformers[sid] || !state.songPerformers[sid].length) {
+          state.songPerformers[sid] = performers; seeded = true;
+        }
+      });
+      if (seeded) {
+        saveToFirebase('/songLeaders',    state.songLeaders);
+        saveToFirebase('/songPerformers', state.songPerformers);
+      }
+
       if (data.events)          state.events          = Object.values(data.events).map(e => ({ time: '', timeEnd: '', place: '', memo: '', ...e }));
       if (data.tasks)           state.tasks           = Object.values(data.tasks).map(t => ({ dueDate: '', ...t }));
       if (data.news)            state.news            = Object.values(data.news).map(n => ({ isNew: false, time: '', ...n, createdAt: (n.createdAt != null) ? n.createdAt : (Date.now() - 30*24*60*60*1000) }));
