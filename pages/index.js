@@ -1254,28 +1254,6 @@ export default function Home() {
         saveToFirebase('/songPerformers', state.songPerformers);
       }
 
-      // 連絡事項（スプレッドシートのコメント欄）をシード
-      const SEED_NOTES = {
-        4:  ['曲の雰囲気: 元気め'],
-        5:  ['曲の雰囲気: 大人め（倍々との対比）'],
-        7:  ['乃木坂で始まる'],
-        10: ['このあたりまでは、知名度＆のれる曲'],
-        11: ['👆１〜４期感', 'センター: ゆりまる希望'],
-        12: ['👇５〜１０期感', 'センター: なし'],
-        16: ['最近めの曲で、ガールズルールに匹敵する山になる・それほほっぽいもの'],
-        18: ['みんな踊れる！大団円！', 'センター(高松): りーな'],
-        19: ['桜ソング　揃えやすい＆揃えたら綺麗！'],
-        20: ['音先、盛り上がれる'],
-        21: ['１〜１０期！コール'],
-      };
-      let notesSeeded = false;
-      Object.entries(SEED_NOTES).forEach(([id, notes]) => {
-        const sid = Number(id);
-        if (!state.songNotes[sid] || state.songNotes[sid].length === 0) {
-          state.songNotes[sid] = notes; notesSeeded = true;
-        }
-      });
-      if (notesSeeded) saveToFirebase('/songNotes', state.songNotes);
 
       // 新メンバー（8〜9期）が未登録なら追加
       const NEW_MEMBERS = [
@@ -1330,6 +1308,29 @@ export default function Home() {
       if (data.attendEvents)    state.attendEvents    = Object.values(data.attendEvents);
       if (data.performanceDate) state.performanceDate = data.performanceDate;
       if (data.adminPin)        state.adminPin        = data.adminPin;
+
+      // 連絡事項シード（songNotes読み込み後に実行）
+      const SEED_NOTES = {
+        4:  ['曲の雰囲気: 元気め'],
+        5:  ['曲の雰囲気: 大人め（倍々との対比）'],
+        7:  ['乃木坂で始まる'],
+        10: ['このあたりまでは、知名度＆のれる曲'],
+        11: ['👆１〜４期感', 'センター: ゆりまる希望'],
+        12: ['👇５〜１０期感', 'センター: なし'],
+        16: ['最近めの曲で、ガールズルールに匹敵する山になる・それほほっぽいもの'],
+        18: ['みんな踊れる！大団円！', 'センター(高松): りーな'],
+        19: ['桜ソング　揃えやすい＆揃えたら綺麗！'],
+        20: ['音先、盛り上がれる'],
+        21: ['１〜１０期！コール'],
+      };
+      let notesSeeded = false;
+      Object.entries(SEED_NOTES).forEach(([id, notes]) => {
+        const sid = Number(id);
+        if (!state.songNotes[sid] || state.songNotes[sid].length === 0) {
+          state.songNotes[sid] = notes; notesSeeded = true;
+        }
+      });
+      if (notesSeeded) saveToFirebase('/songNotes', state.songNotes);
 
       // nextIdをFirebaseの最大IDより大きくする
       const allIds = [
