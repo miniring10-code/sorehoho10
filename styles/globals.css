@@ -2013,3 +2013,51 @@ td.selected-day .day-num {
   font-size: 12px;
   margin-top: 4px;
 }
+
+/* ===== SETLIST PROGRESS COLORS ===== */
+.song-num.prog-wip    { background: #DBEAFE; color: #2563EB; }
+.song-num.prog-almost { background: #FEF3C7; color: #D97706; }
+.song-num.prog-done   { background: #D1FAE5; color: #059669; }
+
+/* ===== SONG PROGRESS SELECT ===== */
+.progress-select {
+  width: 100%;
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: var(--input-bg);
+  color: var(--text);
+  font-size: 14px;
+  font-weight: 600;
+}
+
+/* ===== CENTER ROW ===== */
+.center-row { display: flex; gap: 8px; }
+.center-row select { flex: 1; }
+
+/* ===== LINK FIELDS ===== */
+.link-fields { display: flex; flex-direction: column; gap: 10px; }
+.link-field-row { display: flex; align-items: center; gap: 8px; }
+.link-label {
+  font-size: 12px;
+  color: var(--text-sub);
+  font-weight: 700;
+  white-space: nowrap;
+  min-width: 80px;
+}
+.link-input {
+  flex: 1;
+  padding: 8px 10px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--input-bg);
+  color: var(--text);
+  font-size: 13px;
+}
+
+/* ===== PERFORMERS TOGGLE BTN ===== */
+.performers-toggle-btn {
+  width: 100%;
+  margin-bottom: 8px;
+  text-align: center;
+}

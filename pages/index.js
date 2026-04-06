@@ -116,11 +116,6 @@ export default function Home() {
         { id: 20, name: 'あいら',   generation: 7, isLocal: false },
         { id: 21, name: 'みづき',   generation: 7, isLocal: false },
         { id: 22, name: 'みゅう',   generation: 8, isLocal: false },
-        { id: 23, name: 'ゆき',    generation: 8, isLocal: false },
-        { id: 24, name: 'めん',    generation: 9, isLocal: false },
-        { id: 25, name: 'みあん',  generation: 9, isLocal: false },
-        { id: 26, name: 'りな',    generation: 9, isLocal: false },
-        { id: 27, name: 'うた',    generation: 9, isLocal: false },
       ],
       songs: [
         { id: 1,  title: 'PARTYが始まるよ',       artist: 'AKB48',            section: 'OP' },
@@ -185,6 +180,9 @@ export default function Home() {
       songNotes: {},
       songLeaders: {},    // { songId: ['name1','name2','name3'] }
       songPerformers: {}, // { songId: [memberId, ...] }
+      songCenters:    {}, // { songId: 'memberName' }
+      songProgress:   {}, // { songId: '未着手'|'振り入れ中'|'ほぼ振り入れ完'|'振り入れ完' }
+      songLinks:      {}, // { songId: { ref: '', past: '', formation: '' } }
       currentSongId: null,
     };
 
@@ -696,9 +694,8 @@ export default function Home() {
       const eid = state.currentAttendEvent;
       let counts = { present:0, maybe:0, absent:0, late:0 };
       state.members.forEach(m => {
-        const v = state.attendance[`${eid}-${m.id}`] || 'absent';
+        const v = state.attendance[`${eid}-${m.id}`] || '';
         if (counts[v] !== undefined) counts[v]++;
-        else counts.absent++;
       });
       document.getElementById('count-present').textContent = counts.present;
       document.getElementById('count-maybe').textContent   = counts.maybe;
@@ -715,7 +712,7 @@ export default function Home() {
       const container = document.getElementById('attend-member-list');
       container.innerHTML = '';
       state.members.forEach(m => {
-        const cur = state.attendance[`${eid}-${m.id}`] || 'absent';
+        const cur = state.attendance[`${eid}-${m.id}`] || '';
         const lt  = state.lateTime[`${eid}-${m.id}`] || '';
         const updatedAt = state.attendUpdatedAt[`${eid}-${m.id}`];
         const updatedText = updatedAt ? `<div class="attend-updated-at">更新: ${formatRelativeTime(updatedAt)}</div>` : '';
@@ -750,7 +747,7 @@ export default function Home() {
       // ○ / 遅/早 → 出席扱い
       const available = new Set(
         state.members
-          .filter(m => { const v = state.attendance[`${eid}-${m.id}`] || 'absent'; return v === 'present' || v === 'late'; })
+          .filter(m => { const v = state.attendance[`${eid}-${m.id}`] || ''; return v === 'present' || v === 'late'; })
           .map(m => String(m.id))
       );
 
@@ -835,10 +832,15 @@ export default function Home() {
         const leadersText = leaders && leaders.filter(l=>l).length > 0
           ? `<span class="song-leaders">担当: ${leaders.filter(l=>l).join(' · ')}</span>`
           : '';
+        const progress = state.songProgress[song.id] || '';
+        const progressClass = progress === '振り入れ完' ? 'prog-done'
+          : progress === 'ほぼ振り入れ完' ? 'prog-almost'
+          : progress === '振り入れ中' ? 'prog-wip'
+          : '';
         const li = document.createElement('li');
         li.className = 'setlist-item';
         li.innerHTML = `
-          <span class="song-num">${idx+1}</span>
+          <span class="song-num ${progressClass}">${idx+1}</span>
           <div class="song-info">
             <span class="song-title">${song.title}</span>
             <span class="song-artist">${song.artist}</span>
@@ -865,10 +867,54 @@ export default function Home() {
       panel.addEventListener('transitionend', () => { panel.classList.add('hidden'); }, { once: true });
     }
     function renderSongDetail(songId) {
+      renderSongCenter(songId);
+      renderSongProgress(songId);
+      renderSongLinks(songId);
       renderSongLeaders(songId);
       renderPerformers(songId);
       renderParts(songId);
       renderNotes(songId);
+    }
+    function renderSongCenter(songId) {
+      const container = document.getElementById('center-row');
+      if (!container) return;
+      const cur = state.songCenters[songId] || '';
+      container.innerHTML = '';
+      const sel = document.createElement('select');
+      sel.className = 'leader-select';
+      sel.innerHTML = '<option value="">（未設定）</option>' +
+        state.members.map(m => `<option value="${m.name}" ${cur === m.name ? 'selected' : ''}>${m.name}</option>`).join('');
+      sel.onchange = () => window.saveSongCenter(songId, sel.value);
+      container.appendChild(sel);
+    }
+    function saveSongCenter(songId, value) {
+      state.songCenters[songId] = value;
+      saveToFirebase('/songCenters', state.songCenters);
+    }
+    function renderSongProgress(songId) {
+      const sel = document.getElementById('progress-select');
+      if (!sel) return;
+      sel.value = state.songProgress[songId] || '未着手';
+      sel.onchange = () => window.saveSongProgress(songId, sel.value);
+    }
+    function saveSongProgress(songId, value) {
+      state.songProgress[songId] = value;
+      saveToFirebase('/songProgress', state.songProgress);
+      renderSetlist();
+    }
+    function renderSongLinks(songId) {
+      const links = state.songLinks[songId] || {};
+      const refInp = document.getElementById('link-ref');
+      const pastInp = document.getElementById('link-past');
+      const fmtInp = document.getElementById('link-formation');
+      if (refInp) { refInp.value = links.ref || ''; refInp.onchange = () => window.saveSongLink(songId, 'ref', refInp.value); }
+      if (pastInp) { pastInp.value = links.past || ''; pastInp.onchange = () => window.saveSongLink(songId, 'past', pastInp.value); }
+      if (fmtInp) { fmtInp.value = links.formation || ''; fmtInp.onchange = () => window.saveSongLink(songId, 'formation', fmtInp.value); }
+    }
+    function saveSongLink(songId, key, value) {
+      if (!state.songLinks[songId]) state.songLinks[songId] = {};
+      state.songLinks[songId][key] = value;
+      saveToFirebase('/songLinks', state.songLinks);
     }
     function renderSongLeaders(songId) {
       const container = document.getElementById('leaders-row');
@@ -895,6 +941,20 @@ export default function Home() {
       const container = document.getElementById('performers-toggle');
       const performers = state.songPerformers[songId]; // undefined = all
       container.innerHTML = '';
+
+      // 折りたたみトグルボタン
+      const toggleBtn = document.createElement('button');
+      toggleBtn.className = 'btn-secondary btn-sm performers-toggle-btn';
+      toggleBtn.textContent = container.dataset.open === 'true' ? '▲ 閉じる' : '▼ メンバーを選択';
+      toggleBtn.onclick = () => {
+        const isOpen = container.dataset.open === 'true';
+        container.dataset.open = isOpen ? 'false' : 'true';
+        renderPerformers(songId);
+      };
+      container.appendChild(toggleBtn);
+
+      if (container.dataset.open !== 'true') return;
+
       const gens = [...new Set(state.members.map(m => m.generation))].sort((a,b)=>a-b);
       gens.forEach(gen => {
         const genMembers = state.members.filter(m => m.generation === gen);
@@ -1097,62 +1157,6 @@ export default function Home() {
       if (state.currentAttendEvent === id) state.currentAttendEvent = state.attendEvents[0].id;
       renderAttendEventSettings();
     }
-    function applySpreadsheetData() {
-      if (!confirm('スプレッドシートのデータをFirebaseに上書き保存します。よろしいですか？')) return;
-      // 曲名修正
-      state.songs = state.songs.map(s => {
-        if (s.id === 16) return { ...s, title: 'とくべチュ、して(?)', artist: '未定' };
-        if (s.id === 18) return { ...s, title: '＝LOVE', artist: '＝LOVE' };
-        return s;
-      });
-      // 曲責任者
-      const LEADERS = {
-        1:['みかめろ','ゆいまる',''], 2:['おりざ','',''],   3:['みかめろ','ゆいまる',''],
-        4:['りんりん','',''],         5:['あっきぃ','',''],  6:['りんりん','',''],
-        7:['りーな','',''],           8:['りーな','',''],    9:['あっきぃ','',''],
-        10:['あっきぃ','',''],        11:['みかめろ','',''], 12:['おりざ','',''],
-        15:['あいら','みづき',''],    17:['みかめろ','',''], 19:['あっきぃ','',''],
-        20:['ゆりまる','',''],        21:['ゆいまる','みかめろ',''],
-      };
-      Object.entries(LEADERS).forEach(([id, v]) => { state.songLeaders[Number(id)] = v; });
-      // 確定出演メンバー
-      const PERFORMERS = {
-        2:[11,1,5,6,7,8,14],           4:[13,6,20,21,22,25,26],
-        5:[7,1,6,4,13,12,11,15,18,19,26], 6:[13,4,8,17,14,15,27],
-        7:[1,2,5,6,7,8,11,12,21,22,23],   8:[1,2,5,6,4,12],
-        10:[7,4,9,13,20],              11:[4,2,1,5,8,9,11,15,14,12,27],
-        17:[4,7,13,15,20,22],          19:[7,1,2,4,11,15,14,12,18,21,23,24],
-        20:[2,1,5,4,7,9,14,16,12,18,22],
-      };
-      Object.entries(PERFORMERS).forEach(([id, v]) => { state.songPerformers[Number(id)] = v; });
-      // 連絡事項
-      const NOTES = {
-        4:['曲の雰囲気: 元気め'],              5:['曲の雰囲気: 大人め（倍々との対比）'],
-        7:['乃木坂で始まる'],                  10:['このあたりまでは、知名度＆のれる曲'],
-        11:['👆１〜４期感','センター: ゆりまる希望'],
-        12:['👇５〜１０期感','センター: なし'],
-        16:['最近めの曲で、ガールズルールに匹敵する山になる・それほほっぽいもの'],
-        18:['みんな踊れる！大団円！','センター(高松): りーな'],
-        19:['桜ソング　揃えやすい＆揃えたら綺麗！'],
-        20:['音先、盛り上がれる'],              21:['１〜１０期！コール'],
-      };
-      Object.entries(NOTES).forEach(([id, v]) => { state.songNotes[Number(id)] = v; });
-      // 新メンバー追加
-      const newMems = [{id:23,name:'ゆき',generation:8},{id:24,name:'めん',generation:9},
-        {id:25,name:'みあん',generation:9},{id:26,name:'りな',generation:9},{id:27,name:'うた',generation:9}];
-      const existIds = new Set(state.members.map(m => m.id));
-      newMems.forEach(m => { if (!existIds.has(m.id)) state.members.push({ ...m, isLocal: false }); });
-      state.members.sort((a, b) => a.id - b.id);
-      // 一括保存
-      saveToFirebase('/songs',          arrToObj(state.songs));
-      saveToFirebase('/members',        arrToObj(state.members));
-      saveToFirebase('/songLeaders',    state.songLeaders);
-      saveToFirebase('/songPerformers', state.songPerformers);
-      saveToFirebase('/songNotes',      state.songNotes);
-      saveToFirebase('/seedVersion',    3);
-      renderSetlist(); renderSettings(); renderAttendance();
-      alert('✅ スプレッドシートデータを適用しました！');
-    }
     function applySettings() {
       document.querySelectorAll('[data-member-id]').forEach(inp => {
         const m = state.members.find(m => m.id === parseInt(inp.dataset.memberId));
@@ -1212,6 +1216,9 @@ export default function Home() {
         memos:           state.memos,
         lateTime:        state.lateTime,
         songParts:       state.songParts,
+        songCenters:     state.songCenters,
+        songProgress:    state.songProgress,
+        songLinks:       state.songLinks,
         songNotes:       state.songNotes,
         songLeaders:     state.songLeaders,
         songPerformers:  state.songPerformers,
@@ -1261,6 +1268,9 @@ export default function Home() {
         });
       }
       if (data.lateTime)        state.lateTime        = data.lateTime;
+      if (data.songCenters)  state.songCenters  = data.songCenters;
+      if (data.songProgress) state.songProgress = data.songProgress;
+      if (data.songLinks)    state.songLinks    = data.songLinks;
 
       if (data.events)          state.events          = Object.values(data.events).map(e => ({ time: '', timeEnd: '', place: '', memo: '', ...e }));
       if (data.tasks)           state.tasks           = Object.values(data.tasks).map(t => ({ dueDate: '', ...t }));
@@ -1270,81 +1280,6 @@ export default function Home() {
       if (data.attendEvents)    state.attendEvents    = Object.values(data.attendEvents);
       if (data.performanceDate) state.performanceDate = data.performanceDate;
       if (data.adminPin)        state.adminPin        = data.adminPin;
-
-      // ===== データ移行: Firebase読み込み完了後に実行 (seedVersion < 3) =====
-      if ((data.seedVersion || 0) < 3) {
-        // 1. 曲名・アーティスト修正
-        const SONG_FIXES = { 16: { title: 'とくべチュ、して(?)', artist: '未定' }, 18: { title: '＝LOVE', artist: '＝LOVE' } };
-        state.songs = state.songs.map(s => SONG_FIXES[s.id] ? { ...s, ...SONG_FIXES[s.id] } : s);
-
-        // 2. 曲責任者（メンバー名で保持）
-        const LEADERS = {
-          1:['みかめろ','ゆいまる',''], 2:['おりざ','',''],   3:['みかめろ','ゆいまる',''],
-          4:['りんりん','',''],         5:['あっきぃ','',''],  6:['りんりん','',''],
-          7:['りーな','',''],           8:['りーな','',''],    9:['あっきぃ','',''],
-          10:['あっきぃ','',''],        11:['みかめろ','',''], 12:['おりざ','',''],
-          15:['あいら','みづき',''],    17:['みかめろ','',''], 19:['あっきぃ','',''],
-          20:['ゆりまる','',''],        21:['ゆいまる','みかめろ',''],
-        };
-        Object.entries(LEADERS).forEach(([id, v]) => { state.songLeaders[Number(id)] = v; });
-
-        // 3. 確定出演メンバー (ID: 1:りーな 2:ゆりまる 3:さわ 4:みかめろ 5:まり 6:みさき
-        //    7:あっきぃ 8:もえ 9:みく 10:あや 11:おりざ 12:にゃん 13:りんりん
-        //    14:さな 15:カナメ 16:やなぎ 17:ほの 18:ゆいまる 19:すずめ 20:あいら
-        //    21:みづき 22:みゅう 23:ゆき 24:めん 25:みあん 26:りな 27:うた)
-        const PERFORMERS = {
-          2:  [11,1,5,6,7,8,14],
-          4:  [13,6,20,21,22,25,26],
-          5:  [7,1,6,4,13,12,11,15,18,19,26],
-          6:  [13,4,8,17,14,15,27],
-          7:  [1,2,5,6,7,8,11,12,21,22,23],
-          8:  [1,2,5,6,4,12],
-          10: [7,4,9,13,20],
-          11: [4,2,1,5,8,9,11,15,14,12,27],
-          17: [4,7,13,15,20,22],
-          19: [7,1,2,4,11,15,14,12,18,21,23,24],
-          20: [2,1,5,4,7,9,14,16,12,18,22],
-        };
-        Object.entries(PERFORMERS).forEach(([id, v]) => { state.songPerformers[Number(id)] = v; });
-
-        // 4. 連絡事項
-        const NOTES = {
-          4:  ['曲の雰囲気: 元気め'],
-          5:  ['曲の雰囲気: 大人め（倍々との対比）'],
-          7:  ['乃木坂で始まる'],
-          10: ['このあたりまでは、知名度＆のれる曲'],
-          11: ['👆１〜４期感', 'センター: ゆりまる希望'],
-          12: ['👇５〜１０期感', 'センター: なし'],
-          16: ['最近めの曲で、ガールズルールに匹敵する山になる・それほほっぽいもの'],
-          18: ['みんな踊れる！大団円！', 'センター(高松): りーな'],
-          19: ['桜ソング　揃えやすい＆揃えたら綺麗！'],
-          20: ['音先、盛り上がれる'],
-          21: ['１〜１０期！コール'],
-        };
-        Object.entries(NOTES).forEach(([id, v]) => {
-          if (!state.songNotes[Number(id)] || !state.songNotes[Number(id)].length)
-            state.songNotes[Number(id)] = v;
-        });
-
-        // 5. 新メンバー追加（8〜9期）
-        const existingIds = new Set(state.members.map(m => m.id));
-        [{ id:23,name:'ゆき',generation:8 },{ id:24,name:'めん',generation:9 },
-         { id:25,name:'みあん',generation:9 },{ id:26,name:'りな',generation:9 },
-         { id:27,name:'うた',generation:9 }
-        ].forEach(m => { if (!existingIds.has(m.id)) state.members.push({ ...m, isLocal: false }); });
-        state.members.sort((a, b) => a.id - b.id);
-
-        // 6. 全データを一括保存
-        set(ref(db, '/'), {
-          ...data,
-          songs:          arrToObj(state.songs),
-          members:        arrToObj(state.members),
-          songLeaders:    state.songLeaders,
-          songPerformers: state.songPerformers,
-          songNotes:      state.songNotes,
-          seedVersion:    3,
-        });
-      }
 
       // nextIdをFirebaseの最大IDより大きくする
       const allIds = [
@@ -1398,11 +1333,13 @@ export default function Home() {
     window.closeSongDetail    = closeSongDetail;
     window.savePart           = savePart;
     window.saveLeader         = saveLeader;
+    window.saveSongCenter      = saveSongCenter;
+    window.saveSongProgress    = saveSongProgress;
+    window.saveSongLink        = saveSongLink;
     window.togglePerformer    = togglePerformer;
     window.addNote            = addNote;
     window.deleteNote         = deleteNote;
     window.applySettings         = applySettings;
-    window.applySpreadsheetData  = applySpreadsheetData;
     window.addMemberRow       = addMemberRow;
     window.deleteMember       = deleteMember;
     window.moveSong           = moveSong;
@@ -1465,7 +1402,7 @@ export default function Home() {
         'setAttendance','saveMemo','saveLateTime','openSongDetail','closeSongDetail','savePart',
         'addNote','deleteNote','applySettings','addMemberRow','deleteMember',
         'moveSong','addSongRow','deleteSong','addAttendEventRow','deleteAttendEvent',
-        'saveLeader','togglePerformer',
+        'saveLeader','togglePerformer','saveSongCenter','saveSongProgress','saveSongLink',
       ];
       fns.forEach(fn => { delete window[fn]; });
     };
@@ -1634,10 +1571,6 @@ export default function Home() {
             </div>
             <div className="admin-only">
             <div className="card">
-              <div className="card-title">データ管理</div>
-              <button className="btn-primary" style={{width:'100%'}} onClick={() => window.applySpreadsheetData()}>📋 スプレッドシートデータを再適用</button>
-            </div>
-            <div className="card">
               <div className="card-title">公演日設定</div>
               <div className="modal-field">
                 <label>公演日</label>
@@ -1688,8 +1621,38 @@ export default function Home() {
           <span id="detail-song-title"></span>
         </div>
         <div className="card">
+          <div className="card-title">進捗</div>
+          <select id="progress-select" className="progress-select">
+            <option value="未着手">未着手</option>
+            <option value="振り入れ中">振り入れ中</option>
+            <option value="ほぼ振り入れ完">ほぼ振り入れ完</option>
+            <option value="振り入れ完">振り入れ完</option>
+          </select>
+        </div>
+        <div className="card">
+          <div className="card-title">センター</div>
+          <div id="center-row" className="center-row"></div>
+        </div>
+        <div className="card">
           <div className="card-title">曲責任者</div>
           <div id="leaders-row" className="leaders-row"></div>
+        </div>
+        <div className="card">
+          <div className="card-title">参考リンク</div>
+          <div className="link-fields">
+            <div className="link-field-row">
+              <label className="link-label">参考動画</label>
+              <input type="url" id="link-ref" className="link-input" placeholder="https://..." />
+            </div>
+            <div className="link-field-row">
+              <label className="link-label">過去動画</label>
+              <input type="url" id="link-past" className="link-input" placeholder="https://..." />
+            </div>
+            <div className="link-field-row">
+              <label className="link-label">フォーメーション</label>
+              <input type="url" id="link-formation" className="link-input" placeholder="https://..." />
+            </div>
+          </div>
         </div>
         <div className="card">
           <div className="card-title">連絡事項</div>
