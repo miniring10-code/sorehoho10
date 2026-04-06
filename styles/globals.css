@@ -1793,6 +1793,37 @@ td.selected-day .day-num {
   font-family: inherit;
 }
 
+/* ===== PRACTICE ANALYSIS ===== */
+.pa-title {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text);
+  margin-bottom: 10px;
+}
+.pa-group {
+  font-size: 12px;
+  font-weight: 700;
+  padding: 5px 0 3px;
+  margin-top: 8px;
+  border-bottom: 1px solid var(--border);
+}
+.pa-item {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  flex-wrap: wrap;
+  padding: 5px 0 3px 6px;
+  border-bottom: 1px dashed var(--border);
+}
+.pa-item:last-child { border-bottom: none; }
+.pa-song { font-size: 13px; font-weight: 600; color: var(--text); flex: 1; }
+.pa-count { font-size: 11px; color: var(--text-muted); white-space: nowrap; }
+.pa-absent { font-size: 11px; color: #EF4444; width: 100%; padding-left: 2px; }
+.pa-item.ok    .pa-song { color: #16a34a; }
+.pa-item.partial .pa-song { color: #d97706; }
+.pa-item.hard  .pa-song { color: #dc2626; }
+.pa-item.unset .pa-song { color: var(--text-muted); }
+
 /* 他人行：ボタン非活性 */
 .btn-readonly {
   opacity: 0.35;

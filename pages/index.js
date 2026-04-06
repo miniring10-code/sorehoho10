@@ -735,6 +735,60 @@ export default function Home() {
         `;
         container.appendChild(div);
       });
+      renderPracticeAnalysis();
+    }
+    function renderPracticeAnalysis() {
+      const eid  = state.currentAttendEvent;
+      const box  = document.getElementById('practice-analysis');
+      if (!box) return;
+
+      // ○ / 遅/早 → 出席扱い
+      const available = new Set(
+        state.members
+          .filter(m => { const v = state.attendance[`${eid}-${m.id}`] || 'absent'; return v === 'present' || v === 'late'; })
+          .map(m => String(m.id))
+      );
+
+      const full = [], partial = [], hard = [], unset = [];
+      state.songs.forEach(song => {
+        const perf = (state.songPerformers[song.id] || []).map(String).filter(id => state.members.some(m => String(m.id) === id));
+        if (!perf.length) { unset.push({ song }); return; }
+        const okCount  = perf.filter(id => available.has(id)).length;
+        const total    = perf.length;
+        const absentNames = perf.filter(id => !available.has(id))
+          .map(id => state.members.find(m => String(m.id) === id)?.name || '').filter(Boolean);
+        if (okCount === total)        full.push({ song, okCount, total });
+        else if (okCount >= total / 2) partial.push({ song, okCount, total, absentNames });
+        else                           hard.push({ song, okCount, total, absentNames });
+      });
+
+      const evName = (state.attendEvents.find(e => e.id === eid) || {}).name || '';
+      let html = `<div class="pa-title">📋 ${evName}で練習できる曲</div>`;
+
+      const row = (item, cls) => `
+        <div class="pa-item ${cls}">
+          <span class="pa-song">${item.song.title}</span>
+          <span class="pa-count">${item.okCount}/${item.total}人</span>
+          ${item.absentNames && item.absentNames.length ? `<div class="pa-absent">欠席: ${item.absentNames.join('・')}</div>` : ''}
+        </div>`;
+
+      if (full.length) {
+        html += `<div class="pa-group ok">🟢 全員揃い（${full.length}曲）</div>`;
+        full.forEach(i => { html += row(i, 'ok'); });
+      }
+      if (partial.length) {
+        html += `<div class="pa-group partial">🟡 一部欠席（${partial.length}曲）</div>`;
+        partial.forEach(i => { html += row(i, 'partial'); });
+      }
+      if (hard.length) {
+        html += `<div class="pa-group hard">🔴 難しい（${hard.length}曲）</div>`;
+        hard.forEach(i => { html += row(i, 'hard'); });
+      }
+      if (unset.length) {
+        html += `<div class="pa-group unset">⚪ メンバー未設定（${unset.length}曲）</div>`;
+        unset.forEach(i => { html += `<div class="pa-item unset"><span class="pa-song">${i.song.title}</span></div>`; });
+      }
+      box.innerHTML = html;
     }
     function setMyMember(id) {
       state.myMemberId = id ? parseInt(id) : null;
@@ -1421,6 +1475,9 @@ export default function Home() {
                 <span>遅/早 <strong id="count-late">0</strong></span>
               </div>
               <div className="attend-member-list" id="attend-member-list"></div>
+            </div>
+            <div className="card">
+              <div id="practice-analysis"></div>
             </div>
           </section>
 
