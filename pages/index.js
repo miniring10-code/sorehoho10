@@ -1097,6 +1097,62 @@ export default function Home() {
       if (state.currentAttendEvent === id) state.currentAttendEvent = state.attendEvents[0].id;
       renderAttendEventSettings();
     }
+    function applySpreadsheetData() {
+      if (!confirm('スプレッドシートのデータをFirebaseに上書き保存します。よろしいですか？')) return;
+      // 曲名修正
+      state.songs = state.songs.map(s => {
+        if (s.id === 16) return { ...s, title: 'とくべチュ、して(?)', artist: '未定' };
+        if (s.id === 18) return { ...s, title: '＝LOVE', artist: '＝LOVE' };
+        return s;
+      });
+      // 曲責任者
+      const LEADERS = {
+        1:['みかめろ','ゆいまる',''], 2:['おりざ','',''],   3:['みかめろ','ゆいまる',''],
+        4:['りんりん','',''],         5:['あっきぃ','',''],  6:['りんりん','',''],
+        7:['りーな','',''],           8:['りーな','',''],    9:['あっきぃ','',''],
+        10:['あっきぃ','',''],        11:['みかめろ','',''], 12:['おりざ','',''],
+        15:['あいら','みづき',''],    17:['みかめろ','',''], 19:['あっきぃ','',''],
+        20:['ゆりまる','',''],        21:['ゆいまる','みかめろ',''],
+      };
+      Object.entries(LEADERS).forEach(([id, v]) => { state.songLeaders[Number(id)] = v; });
+      // 確定出演メンバー
+      const PERFORMERS = {
+        2:[11,1,5,6,7,8,14],           4:[13,6,20,21,22,25,26],
+        5:[7,1,6,4,13,12,11,15,18,19,26], 6:[13,4,8,17,14,15,27],
+        7:[1,2,5,6,7,8,11,12,21,22,23],   8:[1,2,5,6,4,12],
+        10:[7,4,9,13,20],              11:[4,2,1,5,8,9,11,15,14,12,27],
+        17:[4,7,13,15,20,22],          19:[7,1,2,4,11,15,14,12,18,21,23,24],
+        20:[2,1,5,4,7,9,14,16,12,18,22],
+      };
+      Object.entries(PERFORMERS).forEach(([id, v]) => { state.songPerformers[Number(id)] = v; });
+      // 連絡事項
+      const NOTES = {
+        4:['曲の雰囲気: 元気め'],              5:['曲の雰囲気: 大人め（倍々との対比）'],
+        7:['乃木坂で始まる'],                  10:['このあたりまでは、知名度＆のれる曲'],
+        11:['👆１〜４期感','センター: ゆりまる希望'],
+        12:['👇５〜１０期感','センター: なし'],
+        16:['最近めの曲で、ガールズルールに匹敵する山になる・それほほっぽいもの'],
+        18:['みんな踊れる！大団円！','センター(高松): りーな'],
+        19:['桜ソング　揃えやすい＆揃えたら綺麗！'],
+        20:['音先、盛り上がれる'],              21:['１〜１０期！コール'],
+      };
+      Object.entries(NOTES).forEach(([id, v]) => { state.songNotes[Number(id)] = v; });
+      // 新メンバー追加
+      const newMems = [{id:23,name:'ゆき',generation:8},{id:24,name:'めん',generation:9},
+        {id:25,name:'みあん',generation:9},{id:26,name:'りな',generation:9},{id:27,name:'うた',generation:9}];
+      const existIds = new Set(state.members.map(m => m.id));
+      newMems.forEach(m => { if (!existIds.has(m.id)) state.members.push({ ...m, isLocal: false }); });
+      state.members.sort((a, b) => a.id - b.id);
+      // 一括保存
+      saveToFirebase('/songs',          arrToObj(state.songs));
+      saveToFirebase('/members',        arrToObj(state.members));
+      saveToFirebase('/songLeaders',    state.songLeaders);
+      saveToFirebase('/songPerformers', state.songPerformers);
+      saveToFirebase('/songNotes',      state.songNotes);
+      saveToFirebase('/seedVersion',    3);
+      renderSetlist(); renderSettings(); renderAttendance();
+      alert('✅ スプレッドシートデータを適用しました！');
+    }
     function applySettings() {
       document.querySelectorAll('[data-member-id]').forEach(inp => {
         const m = state.members.find(m => m.id === parseInt(inp.dataset.memberId));
@@ -1345,7 +1401,8 @@ export default function Home() {
     window.togglePerformer    = togglePerformer;
     window.addNote            = addNote;
     window.deleteNote         = deleteNote;
-    window.applySettings      = applySettings;
+    window.applySettings         = applySettings;
+    window.applySpreadsheetData  = applySpreadsheetData;
     window.addMemberRow       = addMemberRow;
     window.deleteMember       = deleteMember;
     window.moveSong           = moveSong;
@@ -1576,6 +1633,10 @@ export default function Home() {
               <button id="admin-btn" className="admin-lock-btn-full" onClick={() => window.toggleAdmin()}>🔓 管理者ログイン</button>
             </div>
             <div className="admin-only">
+            <div className="card">
+              <div className="card-title">データ管理</div>
+              <button className="btn-primary" style={{width:'100%'}} onClick={() => window.applySpreadsheetData()}>📋 スプレッドシートデータを再適用</button>
+            </div>
             <div className="card">
               <div className="card-title">公演日設定</div>
               <div className="modal-field">
