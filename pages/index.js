@@ -116,6 +116,11 @@ export default function Home() {
         { id: 20, name: 'あいら',   generation: 7, isLocal: false },
         { id: 21, name: 'みづき',   generation: 7, isLocal: false },
         { id: 22, name: 'みゅう',   generation: 8, isLocal: false },
+        { id: 23, name: 'ゆき',    generation: 8, isLocal: false },
+        { id: 24, name: 'めん',    generation: 9, isLocal: false },
+        { id: 25, name: 'みあん',  generation: 9, isLocal: false },
+        { id: 26, name: 'りな',    generation: 9, isLocal: false },
+        { id: 27, name: 'うた',    generation: 9, isLocal: false },
       ],
       songs: [
         { id: 1,  title: 'PARTYが始まるよ',       artist: 'AKB48',            section: 'OP' },
@@ -1248,6 +1253,46 @@ export default function Home() {
         saveToFirebase('/songLeaders',    state.songLeaders);
         saveToFirebase('/songPerformers', state.songPerformers);
       }
+
+      // 新メンバー（8〜9期）が未登録なら追加
+      const NEW_MEMBERS = [
+        { id: 23, name: 'ゆき',   generation: 8, isLocal: false },
+        { id: 24, name: 'めん',   generation: 9, isLocal: false },
+        { id: 25, name: 'みあん', generation: 9, isLocal: false },
+        { id: 26, name: 'りな',   generation: 9, isLocal: false },
+        { id: 27, name: 'うた',   generation: 9, isLocal: false },
+      ];
+      const existingIds = new Set(state.members.map(m => m.id));
+      let membersUpdated = false;
+      NEW_MEMBERS.forEach(m => {
+        if (!existingIds.has(m.id)) { state.members.push(m); membersUpdated = true; }
+      });
+      if (membersUpdated) {
+        state.members.sort((a, b) => a.id - b.id);
+        saveToFirebase('/members', arrToObj(state.members));
+      }
+
+      // 新メンバーを各曲のパフォーマーに追加（不足分のみ）
+      const PERFORMER_ADDITIONS = {
+        4:  [25, 26],   // 倍々FIGHT!: みあん・りな
+        5:  [26],       // 盛れ!ミ・アモーレ: りな
+        6:  [27],       // SHOUT: うた
+        7:  [23],       // ガールズルール: ゆき
+        11: [27],       // サヨナラの意味: うた
+        19: [23, 24],   // 名残り桜: ゆき・めん
+      };
+      let perfUpdated = false;
+      Object.entries(PERFORMER_ADDITIONS).forEach(([id, mids]) => {
+        const sid = Number(id);
+        if (state.songPerformers[sid]) {
+          mids.forEach(mid => {
+            if (!state.songPerformers[sid].includes(mid)) {
+              state.songPerformers[sid].push(mid); perfUpdated = true;
+            }
+          });
+        }
+      });
+      if (perfUpdated) saveToFirebase('/songPerformers', state.songPerformers);
 
       if (data.events)          state.events          = Object.values(data.events).map(e => ({ time: '', timeEnd: '', place: '', memo: '', ...e }));
       if (data.tasks)           state.tasks           = Object.values(data.tasks).map(t => ({ dueDate: '', ...t }));
