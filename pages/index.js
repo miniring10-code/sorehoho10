@@ -1206,100 +1206,6 @@ export default function Home() {
       }
       if (data.lateTime)        state.lateTime        = data.lateTime;
 
-      // ===== スプレッドシートのセトリデータをシード =====
-      const SEED_LEADERS = {
-        1:  ['みかめろ','ゆいまる',''],  2:  ['おりざ','',''],
-        3:  ['みかめろ','ゆいまる',''],  4:  ['りんりん','',''],
-        5:  ['あっきぃ','',''],          6:  ['りんりん','',''],
-        7:  ['りーな','',''],            8:  ['りーな','',''],
-        9:  ['あっきぃ','',''],          10: ['あっきぃ','',''],
-        11: ['みかめろ','',''],          12: ['おりざ','',''],
-        15: ['あいら','みづき',''],      17: ['みかめろ','',''],
-        19: ['あっきぃ','',''],          20: ['ゆりまる','',''],
-        21: ['ゆいまる','みかめろ',''],
-      };
-      // 確定メンバー（スプレッドシートの「確定メンバー」列）
-      // メンバーID: 1:りーな 2:ゆりまる 3:さわ 4:みかめろ 5:まり 6:みさき
-      //             7:あっきぃ 8:もえ 9:みく 10:あや 11:おりざ 12:にゃん
-      //             13:りんりん 14:さな 15:カナメ 16:やなぎ 17:ほの
-      //             18:ゆいまる 19:すずめ 20:あいら 21:みづき 22:みゅう
-      const SEED_PERFORMERS = {
-        2:  [11,1,5,6,7,8,14],          // 超めでたいソング
-        4:  [13,6,20,21,22],            // 倍々FIGHT!
-        5:  [7,1,6,4,13,12,11,15,18,19],// 盛れ!ミ・アモーレ
-        6:  [13,4,8,17,14,15],          // SHOUT
-        7:  [1,2,5,6,7,8,11,12,21,22],  // ガールズルール
-        8:  [1,2,5,6,4,12],             // Cheeky Dreamer
-        10: [7,4,9,13,20],              // 僕らはここにいる
-        11: [4,2,1,5,8,9,11,15,14,12],  // サヨナラの意味
-        17: [4,7,13,15,20,22],          // A INNOCENCE
-        19: [7,1,2,4,11,15,14,12,18,21],// 名残り桜
-        20: [2,1,5,4,7,9,14,16,12,18,22],// YOZORA
-      };
-      let seeded = false;
-      Object.entries(SEED_LEADERS).forEach(([id, leaders]) => {
-        const sid = Number(id);
-        if (!state.songLeaders[sid] || !state.songLeaders[sid].some(l => l)) {
-          state.songLeaders[sid] = leaders; seeded = true;
-        }
-      });
-      Object.entries(SEED_PERFORMERS).forEach(([id, performers]) => {
-        const sid = Number(id);
-        if (!state.songPerformers[sid] || !state.songPerformers[sid].length) {
-          state.songPerformers[sid] = performers; seeded = true;
-        }
-      });
-      if (seeded) {
-        saveToFirebase('/songLeaders',    state.songLeaders);
-        saveToFirebase('/songPerformers', state.songPerformers);
-      }
-
-
-      // 新メンバー（8〜9期）が未登録なら追加
-      const NEW_MEMBERS = [
-        { id: 23, name: 'ゆき',   generation: 8, isLocal: false },
-        { id: 24, name: 'めん',   generation: 9, isLocal: false },
-        { id: 25, name: 'みあん', generation: 9, isLocal: false },
-        { id: 26, name: 'りな',   generation: 9, isLocal: false },
-        { id: 27, name: 'うた',   generation: 9, isLocal: false },
-      ];
-      // Firebase実データのIDで存在確認（stateのデフォルト値ではなく）
-      const existingIds = new Set(
-        data.members
-          ? Object.values(data.members).map(m => Number(m.id))
-          : state.members.map(m => m.id)
-      );
-      let membersUpdated = false;
-      NEW_MEMBERS.forEach(m => {
-        if (!existingIds.has(m.id)) { state.members.push(m); membersUpdated = true; }
-      });
-      if (membersUpdated) {
-        state.members.sort((a, b) => a.id - b.id);
-        saveToFirebase('/members', arrToObj(state.members));
-      }
-
-      // 新メンバーを各曲のパフォーマーに追加（不足分のみ）
-      const PERFORMER_ADDITIONS = {
-        4:  [25, 26],   // 倍々FIGHT!: みあん・りな
-        5:  [26],       // 盛れ!ミ・アモーレ: りな
-        6:  [27],       // SHOUT: うた
-        7:  [23],       // ガールズルール: ゆき
-        11: [27],       // サヨナラの意味: うた
-        19: [23, 24],   // 名残り桜: ゆき・めん
-      };
-      let perfUpdated = false;
-      Object.entries(PERFORMER_ADDITIONS).forEach(([id, mids]) => {
-        const sid = Number(id);
-        if (state.songPerformers[sid]) {
-          mids.forEach(mid => {
-            if (!state.songPerformers[sid].includes(mid)) {
-              state.songPerformers[sid].push(mid); perfUpdated = true;
-            }
-          });
-        }
-      });
-      if (perfUpdated) saveToFirebase('/songPerformers', state.songPerformers);
-
       if (data.events)          state.events          = Object.values(data.events).map(e => ({ time: '', timeEnd: '', place: '', memo: '', ...e }));
       if (data.tasks)           state.tasks           = Object.values(data.tasks).map(t => ({ dueDate: '', ...t }));
       if (data.news)            state.news            = Object.values(data.news).map(n => ({ isNew: false, time: '', ...n, createdAt: (n.createdAt != null) ? n.createdAt : (Date.now() - 30*24*60*60*1000) }));
@@ -1309,28 +1215,80 @@ export default function Home() {
       if (data.performanceDate) state.performanceDate = data.performanceDate;
       if (data.adminPin)        state.adminPin        = data.adminPin;
 
-      // 連絡事項シード（songNotes読み込み後に実行）
-      const SEED_NOTES = {
-        4:  ['曲の雰囲気: 元気め'],
-        5:  ['曲の雰囲気: 大人め（倍々との対比）'],
-        7:  ['乃木坂で始まる'],
-        10: ['このあたりまでは、知名度＆のれる曲'],
-        11: ['👆１〜４期感', 'センター: ゆりまる希望'],
-        12: ['👇５〜１０期感', 'センター: なし'],
-        16: ['最近めの曲で、ガールズルールに匹敵する山になる・それほほっぽいもの'],
-        18: ['みんな踊れる！大団円！', 'センター(高松): りーな'],
-        19: ['桜ソング　揃えやすい＆揃えたら綺麗！'],
-        20: ['音先、盛り上がれる'],
-        21: ['１〜１０期！コール'],
-      };
-      let notesSeeded = false;
-      Object.entries(SEED_NOTES).forEach(([id, notes]) => {
-        const sid = Number(id);
-        if (!state.songNotes[sid] || state.songNotes[sid].length === 0) {
-          state.songNotes[sid] = notes; notesSeeded = true;
-        }
-      });
-      if (notesSeeded) saveToFirebase('/songNotes', state.songNotes);
+      // ===== データ移行: Firebase読み込み完了後に実行 (seedVersion < 3) =====
+      if ((data.seedVersion || 0) < 3) {
+        // 1. 曲名・アーティスト修正
+        const SONG_FIXES = { 16: { title: 'とくべチュ、して(?)', artist: '未定' }, 18: { title: '＝LOVE', artist: '＝LOVE' } };
+        state.songs = state.songs.map(s => SONG_FIXES[s.id] ? { ...s, ...SONG_FIXES[s.id] } : s);
+
+        // 2. 曲責任者（メンバー名で保持）
+        const LEADERS = {
+          1:['みかめろ','ゆいまる',''], 2:['おりざ','',''],   3:['みかめろ','ゆいまる',''],
+          4:['りんりん','',''],         5:['あっきぃ','',''],  6:['りんりん','',''],
+          7:['りーな','',''],           8:['りーな','',''],    9:['あっきぃ','',''],
+          10:['あっきぃ','',''],        11:['みかめろ','',''], 12:['おりざ','',''],
+          15:['あいら','みづき',''],    17:['みかめろ','',''], 19:['あっきぃ','',''],
+          20:['ゆりまる','',''],        21:['ゆいまる','みかめろ',''],
+        };
+        Object.entries(LEADERS).forEach(([id, v]) => { state.songLeaders[Number(id)] = v; });
+
+        // 3. 確定出演メンバー (ID: 1:りーな 2:ゆりまる 3:さわ 4:みかめろ 5:まり 6:みさき
+        //    7:あっきぃ 8:もえ 9:みく 10:あや 11:おりざ 12:にゃん 13:りんりん
+        //    14:さな 15:カナメ 16:やなぎ 17:ほの 18:ゆいまる 19:すずめ 20:あいら
+        //    21:みづき 22:みゅう 23:ゆき 24:めん 25:みあん 26:りな 27:うた)
+        const PERFORMERS = {
+          2:  [11,1,5,6,7,8,14],
+          4:  [13,6,20,21,22,25,26],
+          5:  [7,1,6,4,13,12,11,15,18,19,26],
+          6:  [13,4,8,17,14,15,27],
+          7:  [1,2,5,6,7,8,11,12,21,22,23],
+          8:  [1,2,5,6,4,12],
+          10: [7,4,9,13,20],
+          11: [4,2,1,5,8,9,11,15,14,12,27],
+          17: [4,7,13,15,20,22],
+          19: [7,1,2,4,11,15,14,12,18,21,23,24],
+          20: [2,1,5,4,7,9,14,16,12,18,22],
+        };
+        Object.entries(PERFORMERS).forEach(([id, v]) => { state.songPerformers[Number(id)] = v; });
+
+        // 4. 連絡事項
+        const NOTES = {
+          4:  ['曲の雰囲気: 元気め'],
+          5:  ['曲の雰囲気: 大人め（倍々との対比）'],
+          7:  ['乃木坂で始まる'],
+          10: ['このあたりまでは、知名度＆のれる曲'],
+          11: ['👆１〜４期感', 'センター: ゆりまる希望'],
+          12: ['👇５〜１０期感', 'センター: なし'],
+          16: ['最近めの曲で、ガールズルールに匹敵する山になる・それほほっぽいもの'],
+          18: ['みんな踊れる！大団円！', 'センター(高松): りーな'],
+          19: ['桜ソング　揃えやすい＆揃えたら綺麗！'],
+          20: ['音先、盛り上がれる'],
+          21: ['１〜１０期！コール'],
+        };
+        Object.entries(NOTES).forEach(([id, v]) => {
+          if (!state.songNotes[Number(id)] || !state.songNotes[Number(id)].length)
+            state.songNotes[Number(id)] = v;
+        });
+
+        // 5. 新メンバー追加（8〜9期）
+        const existingIds = new Set(state.members.map(m => m.id));
+        [{ id:23,name:'ゆき',generation:8 },{ id:24,name:'めん',generation:9 },
+         { id:25,name:'みあん',generation:9 },{ id:26,name:'りな',generation:9 },
+         { id:27,name:'うた',generation:9 }
+        ].forEach(m => { if (!existingIds.has(m.id)) state.members.push({ ...m, isLocal: false }); });
+        state.members.sort((a, b) => a.id - b.id);
+
+        // 6. 全データを一括保存
+        set(ref(db, '/'), {
+          ...data,
+          songs:          arrToObj(state.songs),
+          members:        arrToObj(state.members),
+          songLeaders:    state.songLeaders,
+          songPerformers: state.songPerformers,
+          songNotes:      state.songNotes,
+          seedVersion:    3,
+        });
+      }
 
       // nextIdをFirebaseの最大IDより大きくする
       const allIds = [
