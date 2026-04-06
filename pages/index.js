@@ -1262,7 +1262,12 @@ export default function Home() {
         { id: 26, name: 'りな',   generation: 9, isLocal: false },
         { id: 27, name: 'うた',   generation: 9, isLocal: false },
       ];
-      const existingIds = new Set(state.members.map(m => m.id));
+      // Firebase実データのIDで存在確認（stateのデフォルト値ではなく）
+      const existingIds = new Set(
+        data.members
+          ? Object.values(data.members).map(m => Number(m.id))
+          : state.members.map(m => m.id)
+      );
       let membersUpdated = false;
       NEW_MEMBERS.forEach(m => {
         if (!existingIds.has(m.id)) { state.members.push(m); membersUpdated = true; }
