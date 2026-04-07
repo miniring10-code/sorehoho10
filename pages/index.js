@@ -182,7 +182,8 @@ export default function Home() {
       songPerformers: {}, // { songId: [memberId, ...] }
       songCenters:    {}, // { songId: 'memberName' }
       songProgress:   {}, // { songId: '未着手'|'振り入れ中'|'ほぼ振り入れ完'|'振り入れ完' }
-      songLinks:      {}, // { songId: { ref: '', past: '', formation: '' } }
+      songLinks:      {}, // { songId: { ref: [], past: [], formation: [] } }
+      songMic:        {}, // { songId: 'hand'|'headset'|'both'|'' }
       currentSongId: null,
     };
 
@@ -832,6 +833,13 @@ export default function Home() {
         const leadersText = leaders && leaders.filter(l=>l).length > 0
           ? `<span class="song-leaders">担当: ${leaders.filter(l=>l).join(' · ')}</span>`
           : '';
+        const center = state.songCenters[song.id] || '';
+        const centerText = center ? `<span class="song-center">★ ${center}</span>` : '';
+        const mic = state.songMic[song.id] || '';
+        const micIcon = mic === 'hand' ? '<span class="mic-icon mic-hand" title="ハンドマイク">🎤</span>'
+          : mic === 'headset' ? '<span class="mic-icon mic-headset" title="ヘッドセット">🎧</span>'
+          : mic === 'both' ? '<span class="mic-icon mic-both" title="両方">🎤🎧</span>'
+          : '';
         const progress = state.songProgress[song.id] || '';
         const progressClass = progress === '振り入れ完' ? 'prog-done'
           : progress === 'ほぼ振り入れ完' ? 'prog-almost'
@@ -844,9 +852,9 @@ export default function Home() {
           <div class="song-info">
             <span class="song-title">${song.title}</span>
             <span class="song-artist">${song.artist}</span>
-            ${leadersText}
+            <div class="song-meta-row">${leadersText}${centerText}</div>
           </div>
-          <span class="chevron">›</span>
+          <div class="song-right">${micIcon}<span class="chevron">›</span></div>
         `;
         li.onclick = () => openSongDetail(song.id);
         ol.appendChild(li);
@@ -868,6 +876,7 @@ export default function Home() {
     }
     function renderSongDetail(songId) {
       renderSongCenter(songId);
+      renderSongMic(songId);
       renderSongProgress(songId);
       renderSongLinks(songId);
       renderSongLeaders(songId);
@@ -890,6 +899,18 @@ export default function Home() {
     function saveSongCenter(songId, value) {
       state.songCenters[songId] = value;
       saveToFirebase('/songCenters', state.songCenters);
+      renderSetlist();
+    }
+    function renderSongMic(songId) {
+      const sel = document.getElementById('mic-select');
+      if (!sel) return;
+      sel.value = state.songMic[songId] || '';
+      sel.onchange = () => window.saveSongMic(songId, sel.value);
+    }
+    function saveSongMic(songId, value) {
+      state.songMic[songId] = value;
+      saveToFirebase('/songMic', state.songMic);
+      renderSetlist();
     }
     function renderSongProgress(songId) {
       const sel = document.getElementById('progress-select');
@@ -1265,6 +1286,7 @@ export default function Home() {
         songCenters:     state.songCenters,
         songProgress:    state.songProgress,
         songLinks:       state.songLinks,
+        songMic:         state.songMic,
         songNotes:       state.songNotes,
         songLeaders:     state.songLeaders,
         songPerformers:  state.songPerformers,
@@ -1317,6 +1339,7 @@ export default function Home() {
       if (data.songCenters)  state.songCenters  = data.songCenters;
       if (data.songProgress) state.songProgress = data.songProgress;
       if (data.songLinks)    state.songLinks    = data.songLinks;
+      if (data.songMic)      state.songMic      = data.songMic;
 
       if (data.events)          state.events          = Object.values(data.events).map(e => ({ time: '', timeEnd: '', place: '', memo: '', ...e }));
       if (data.tasks)           state.tasks           = Object.values(data.tasks).map(t => ({ dueDate: '', ...t }));
@@ -1380,6 +1403,7 @@ export default function Home() {
     window.savePart           = savePart;
     window.saveLeader         = saveLeader;
     window.saveSongCenter      = saveSongCenter;
+    window.saveSongMic         = saveSongMic;
     window.saveSongProgress    = saveSongProgress;
     window.addSongLink         = addSongLink;
     window.removeSongLink      = removeSongLink;
@@ -1449,7 +1473,7 @@ export default function Home() {
         'setAttendance','saveMemo','saveLateTime','openSongDetail','closeSongDetail','savePart',
         'addNote','deleteNote','applySettings','addMemberRow','deleteMember',
         'moveSong','addSongRow','deleteSong','addAttendEventRow','deleteAttendEvent',
-        'saveLeader','togglePerformer','saveSongCenter','saveSongProgress','addSongLink','removeSongLink',
+        'saveLeader','togglePerformer','saveSongCenter','saveSongMic','saveSongProgress','addSongLink','removeSongLink',
       ];
       fns.forEach(fn => { delete window[fn]; });
     };
@@ -1679,6 +1703,15 @@ export default function Home() {
         <div className="card">
           <div className="card-title">センター</div>
           <div id="center-row" className="center-row"></div>
+        </div>
+        <div className="card">
+          <div className="card-title">マイク</div>
+          <select id="mic-select" className="progress-select">
+            <option value="">未設定</option>
+            <option value="hand">🎤 ハンドマイク</option>
+            <option value="headset">🎧 ヘッドセット</option>
+            <option value="both">🎤🎧 両方</option>
+          </select>
         </div>
         <div className="card">
           <div className="card-title">曲責任者</div>

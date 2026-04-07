@@ -2019,6 +2019,32 @@ td.selected-day .day-num {
 .song-num.prog-almost { background: #FEF3C7; color: #D97706; }
 .song-num.prog-done   { background: #D1FAE5; color: #059669; }
 
+/* ===== SETLIST META ROW (center / leaders) ===== */
+.song-meta-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-top: 2px;
+}
+.song-center {
+  font-size: 11px;
+  color: #9D4EDD;
+  font-weight: 700;
+  background: #F3E8FF;
+  padding: 1px 6px;
+  border-radius: 8px;
+}
+.song-right {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
+}
+.mic-icon {
+  font-size: 16px;
+  line-height: 1;
+}
+
 /* ===== SONG PROGRESS SELECT ===== */
 .progress-select {
   width: 100%;
