@@ -903,18 +903,64 @@ export default function Home() {
       renderSetlist();
     }
     function renderSongLinks(songId) {
+      const container = document.getElementById('song-links-container');
+      if (!container) return;
       const links = state.songLinks[songId] || {};
-      const refInp = document.getElementById('link-ref');
-      const pastInp = document.getElementById('link-past');
-      const fmtInp = document.getElementById('link-formation');
-      if (refInp) { refInp.value = links.ref || ''; refInp.onchange = () => window.saveSongLink(songId, 'ref', refInp.value); }
-      if (pastInp) { pastInp.value = links.past || ''; pastInp.onchange = () => window.saveSongLink(songId, 'past', pastInp.value); }
-      if (fmtInp) { fmtInp.value = links.formation || ''; fmtInp.onchange = () => window.saveSongLink(songId, 'formation', fmtInp.value); }
+      const categories = [
+        { key: 'ref',        label: '参考動画' },
+        { key: 'past',       label: '過去動画' },
+        { key: 'formation',  label: 'フォーメーション' },
+      ];
+      container.innerHTML = '';
+      categories.forEach(({ key, label }) => {
+        const raw = links[key];
+        const urls = Array.isArray(raw) ? raw : (raw ? [raw] : []);
+        const catDiv = document.createElement('div');
+        catDiv.className = 'link-category';
+        const labelEl = document.createElement('div');
+        labelEl.className = 'link-cat-label';
+        labelEl.textContent = label;
+        catDiv.appendChild(labelEl);
+        urls.forEach((url, idx) => {
+          const safeUrl = url.replace(/"/g, '&quot;');
+          const row = document.createElement('div');
+          row.className = 'link-item-row';
+          row.innerHTML = `
+            <a href="${safeUrl}" target="_blank" rel="noopener noreferrer" class="link-url">${url}</a>
+            <button class="btn-icon link-del-btn" onclick="window.removeSongLink(${songId},'${key}',${idx})">✕</button>
+          `;
+          catDiv.appendChild(row);
+        });
+        const addRow = document.createElement('div');
+        addRow.className = 'link-add-row';
+        addRow.innerHTML = `
+          <input type="url" id="link-input-${key}-${songId}" class="link-input" placeholder="URLを入力..." />
+          <button class="btn-secondary btn-sm" onclick="window.addSongLink(${songId},'${key}')">追加</button>
+        `;
+        catDiv.appendChild(addRow);
+        container.appendChild(catDiv);
+      });
     }
-    function saveSongLink(songId, key, value) {
+    function addSongLink(songId, key) {
+      const input = document.getElementById(`link-input-${key}-${songId}`);
+      const url = input ? input.value.trim() : '';
+      if (!url) return;
       if (!state.songLinks[songId]) state.songLinks[songId] = {};
-      state.songLinks[songId][key] = value;
+      const existing = state.songLinks[songId][key];
+      if (Array.isArray(existing)) { existing.push(url); }
+      else if (existing) { state.songLinks[songId][key] = [existing, url]; }
+      else { state.songLinks[songId][key] = [url]; }
       saveToFirebase('/songLinks', state.songLinks);
+      renderSongLinks(songId);
+    }
+    function removeSongLink(songId, key, idx) {
+      if (!state.songLinks[songId]) return;
+      const raw = state.songLinks[songId][key];
+      const arr = Array.isArray(raw) ? raw : (raw ? [raw] : []);
+      arr.splice(idx, 1);
+      state.songLinks[songId][key] = arr;
+      saveToFirebase('/songLinks', state.songLinks);
+      renderSongLinks(songId);
     }
     function renderSongLeaders(songId) {
       const container = document.getElementById('leaders-row');
@@ -1335,7 +1381,8 @@ export default function Home() {
     window.saveLeader         = saveLeader;
     window.saveSongCenter      = saveSongCenter;
     window.saveSongProgress    = saveSongProgress;
-    window.saveSongLink        = saveSongLink;
+    window.addSongLink         = addSongLink;
+    window.removeSongLink      = removeSongLink;
     window.togglePerformer    = togglePerformer;
     window.addNote            = addNote;
     window.deleteNote         = deleteNote;
@@ -1402,7 +1449,7 @@ export default function Home() {
         'setAttendance','saveMemo','saveLateTime','openSongDetail','closeSongDetail','savePart',
         'addNote','deleteNote','applySettings','addMemberRow','deleteMember',
         'moveSong','addSongRow','deleteSong','addAttendEventRow','deleteAttendEvent',
-        'saveLeader','togglePerformer','saveSongCenter','saveSongProgress','saveSongLink',
+        'saveLeader','togglePerformer','saveSongCenter','saveSongProgress','addSongLink','removeSongLink',
       ];
       fns.forEach(fn => { delete window[fn]; });
     };
@@ -1639,20 +1686,7 @@ export default function Home() {
         </div>
         <div className="card">
           <div className="card-title">参考リンク</div>
-          <div className="link-fields">
-            <div className="link-field-row">
-              <label className="link-label">参考動画</label>
-              <input type="url" id="link-ref" className="link-input" placeholder="https://..." />
-            </div>
-            <div className="link-field-row">
-              <label className="link-label">過去動画</label>
-              <input type="url" id="link-past" className="link-input" placeholder="https://..." />
-            </div>
-            <div className="link-field-row">
-              <label className="link-label">フォーメーション</label>
-              <input type="url" id="link-formation" className="link-input" placeholder="https://..." />
-            </div>
-          </div>
+          <div id="song-links-container"></div>
         </div>
         <div className="card">
           <div className="card-title">連絡事項</div>

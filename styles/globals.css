@@ -2035,15 +2035,38 @@ td.selected-day .day-num {
 .center-row { display: flex; gap: 8px; }
 .center-row select { flex: 1; }
 
-/* ===== LINK FIELDS ===== */
-.link-fields { display: flex; flex-direction: column; gap: 10px; }
-.link-field-row { display: flex; align-items: center; gap: 8px; }
-.link-label {
+/* ===== LINK CATEGORIES (multiple URLs) ===== */
+.link-category { margin-bottom: 12px; }
+.link-category:last-child { margin-bottom: 0; }
+.link-cat-label {
   font-size: 12px;
   color: var(--text-sub);
   font-weight: 700;
+  margin-bottom: 6px;
+}
+.link-item-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 4px;
+}
+.link-url {
+  flex: 1;
+  font-size: 12px;
+  color: #2563EB;
+  text-decoration: underline;
+  overflow: hidden;
+  text-overflow: ellipsis;
   white-space: nowrap;
-  min-width: 80px;
+  padding: 4px 6px;
+  border-radius: 6px;
+  background: #EFF6FF;
+}
+.link-del-btn { flex-shrink: 0; font-size: 11px; padding: 2px 6px; }
+.link-add-row {
+  display: flex;
+  gap: 6px;
+  margin-top: 4px;
 }
 .link-input {
   flex: 1;
