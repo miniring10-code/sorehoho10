@@ -1004,7 +1004,10 @@ export default function Home() {
         addRow.innerHTML = `${extraInput}
           <input type="url" id="link-input-${key}-${songId}" class="link-input" placeholder="URLを入力..." />
           <button class="btn-secondary btn-sm" onclick="window.addSongLink(${songId},'${key}')">追加</button>`;
-        catDiv.appendChild(addRow);
+        // formation は1件のみ許可
+        if (!(key === 'formation' && items.length >= 1)) {
+          catDiv.appendChild(addRow);
+        }
         container.appendChild(catDiv);
       });
     }
