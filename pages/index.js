@@ -184,6 +184,8 @@ export default function Home() {
       songProgress:   {}, // { songId: '未着手'|'振り入れ中'|'ほぼ振り入れ完'|'振り入れ完' }
       songLinks:      {}, // { songId: { ref: [], past: [], formation: [] } }
       songMic:        {}, // { songId: 'hand'|'headset'|'both'|'' }
+      songStart:      {}, // { songId: 'itatsuki'|'kyokusaki'|'' }
+      songPracticeDate: {}, // { songId: 'YYYY-MM-DD' }
       currentSongId: null,
     };
 
@@ -840,6 +842,14 @@ export default function Home() {
           : mic === 'headset' ? '<span class="mic-icon mic-headset" title="ヘッドセット">🎧</span>'
           : mic === 'both' ? '<span class="mic-icon mic-both" title="両方">🎤🎧</span>'
           : '';
+        const start = state.songStart[song.id] || '';
+        const startBadge = start === 'itatsuki' ? '<span class="start-badge itatsuki">板付</span>'
+          : start === 'kyokusaki' ? '<span class="start-badge kyokusaki">曲先</span>'
+          : '';
+        const practiceDate = state.songPracticeDate[song.id] || '';
+        const practiceDateText = practiceDate
+          ? (() => { const p = practiceDate.split('-'); return `<span class="practice-date-badge">🗓 ${parseInt(p[1])}/${parseInt(p[2])}</span>`; })()
+          : '';
         const progress = state.songProgress[song.id] || '';
         const progressClass = progress === '振り入れ完' ? 'prog-done'
           : progress === 'ほぼ振り入れ完' ? 'prog-almost'
@@ -852,7 +862,7 @@ export default function Home() {
           <div class="song-info">
             <span class="song-title">${song.title}</span>
             <span class="song-artist">${song.artist}</span>
-            <div class="song-meta-row">${leadersText}${centerText}</div>
+            <div class="song-meta-row">${leadersText}${centerText}${startBadge}${practiceDateText}</div>
           </div>
           <div class="song-right">${micIcon}<span class="chevron">›</span></div>
         `;
@@ -877,6 +887,8 @@ export default function Home() {
     function renderSongDetail(songId) {
       renderSongCenter(songId);
       renderSongMic(songId);
+      renderSongStart(songId);
+      renderSongPracticeDate(songId);
       renderSongProgress(songId);
       renderSongLinks(songId);
       renderSongLeaders(songId);
@@ -912,6 +924,27 @@ export default function Home() {
       saveToFirebase('/songMic', state.songMic);
       renderSetlist();
     }
+    function renderSongStart(songId) {
+      const sel = document.getElementById('start-select');
+      if (!sel) return;
+      sel.value = state.songStart[songId] || '';
+      sel.onchange = () => window.saveSongStart(songId, sel.value);
+    }
+    function saveSongStart(songId, value) {
+      state.songStart[songId] = value;
+      saveToFirebase('/songStart', state.songStart);
+      renderSetlist();
+    }
+    function renderSongPracticeDate(songId) {
+      const inp = document.getElementById('practice-date-input');
+      if (!inp) return;
+      inp.value = state.songPracticeDate[songId] || '';
+      inp.onchange = () => window.saveSongPracticeDate(songId, inp.value);
+    }
+    function saveSongPracticeDate(songId, value) {
+      state.songPracticeDate[songId] = value;
+      saveToFirebase('/songPracticeDate', state.songPracticeDate);
+    }
     function renderSongProgress(songId) {
       const sel = document.getElementById('progress-select');
       if (!sel) return;
@@ -928,6 +961,7 @@ export default function Home() {
       if (!container) return;
       const links = state.songLinks[songId] || {};
       const categories = [
+        { key: 'practice',   label: '練習動画' },
         { key: 'ref',        label: '参考動画' },
         { key: 'past',       label: '過去動画' },
         { key: 'formation',  label: 'フォーメーション' },
@@ -1286,7 +1320,9 @@ export default function Home() {
         songCenters:     state.songCenters,
         songProgress:    state.songProgress,
         songLinks:       state.songLinks,
-        songMic:         state.songMic,
+        songMic:          state.songMic,
+        songStart:        state.songStart,
+        songPracticeDate: state.songPracticeDate,
         songNotes:       state.songNotes,
         songLeaders:     state.songLeaders,
         songPerformers:  state.songPerformers,
@@ -1339,7 +1375,9 @@ export default function Home() {
       if (data.songCenters)  state.songCenters  = data.songCenters;
       if (data.songProgress) state.songProgress = data.songProgress;
       if (data.songLinks)    state.songLinks    = data.songLinks;
-      if (data.songMic)      state.songMic      = data.songMic;
+      if (data.songMic)          state.songMic          = data.songMic;
+      if (data.songStart)        state.songStart        = data.songStart;
+      if (data.songPracticeDate) state.songPracticeDate = data.songPracticeDate;
 
       if (data.events)          state.events          = Object.values(data.events).map(e => ({ time: '', timeEnd: '', place: '', memo: '', ...e }));
       if (data.tasks)           state.tasks           = Object.values(data.tasks).map(t => ({ dueDate: '', ...t }));
@@ -1403,8 +1441,10 @@ export default function Home() {
     window.savePart           = savePart;
     window.saveLeader         = saveLeader;
     window.saveSongCenter      = saveSongCenter;
-    window.saveSongMic         = saveSongMic;
-    window.saveSongProgress    = saveSongProgress;
+    window.saveSongMic          = saveSongMic;
+    window.saveSongStart        = saveSongStart;
+    window.saveSongPracticeDate = saveSongPracticeDate;
+    window.saveSongProgress     = saveSongProgress;
     window.addSongLink         = addSongLink;
     window.removeSongLink      = removeSongLink;
     window.togglePerformer    = togglePerformer;
@@ -1473,7 +1513,7 @@ export default function Home() {
         'setAttendance','saveMemo','saveLateTime','openSongDetail','closeSongDetail','savePart',
         'addNote','deleteNote','applySettings','addMemberRow','deleteMember',
         'moveSong','addSongRow','deleteSong','addAttendEventRow','deleteAttendEvent',
-        'saveLeader','togglePerformer','saveSongCenter','saveSongMic','saveSongProgress','addSongLink','removeSongLink',
+        'saveLeader','togglePerformer','saveSongCenter','saveSongMic','saveSongStart','saveSongPracticeDate','saveSongProgress','addSongLink','removeSongLink',
       ];
       fns.forEach(fn => { delete window[fn]; });
     };
@@ -1712,6 +1752,18 @@ export default function Home() {
             <option value="headset">🎧 ヘッドセット</option>
             <option value="both">🎤🎧 両方</option>
           </select>
+        </div>
+        <div className="card">
+          <div className="card-title">スタート</div>
+          <select id="start-select" className="progress-select">
+            <option value="">未設定</option>
+            <option value="itatsuki">板付</option>
+            <option value="kyokusaki">曲先</option>
+          </select>
+        </div>
+        <div className="card">
+          <div className="card-title">練習日</div>
+          <input type="date" id="practice-date-input" className="progress-select" />
         </div>
         <div className="card">
           <div className="card-title">曲責任者</div>

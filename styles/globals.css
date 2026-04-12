@@ -2044,6 +2044,23 @@ td.selected-day .day-num {
   font-size: 16px;
   line-height: 1;
 }
+.start-badge {
+  font-size: 10px;
+  font-weight: 700;
+  padding: 1px 6px;
+  border-radius: 8px;
+  white-space: nowrap;
+}
+.start-badge.itatsuki  { background: #DBEAFE; color: #1D4ED8; }
+.start-badge.kyokusaki { background: #FEF3C7; color: #B45309; }
+.practice-date-badge {
+  font-size: 10px;
+  color: var(--text-muted);
+  background: var(--card-muted-bg);
+  padding: 1px 6px;
+  border-radius: 8px;
+  white-space: nowrap;
+}
 
 /* ===== SONG PROGRESS SELECT ===== */
 .progress-select {
