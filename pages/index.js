@@ -954,7 +954,7 @@ export default function Home() {
       categories.forEach(({ key, label }) => {
         const raw = links[key];
         const items = Array.isArray(raw) ? raw : (raw ? [raw] : []);
-        const isPractice = key === 'practice';
+        const isPractice = key === 'practice' || key === 'formation';
         const catDiv = document.createElement('div');
         catDiv.className = 'link-category';
         const labelEl = document.createElement('div');
