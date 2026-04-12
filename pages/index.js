@@ -1157,15 +1157,46 @@ export default function Home() {
       renderParts(songId);
       renderPerformers(songId);
     }
+    let editingNoteIdx = null;
     function renderNotes(songId) {
       const container = document.getElementById('notes-list');
       container.innerHTML = '';
       (state.songNotes[songId] || []).forEach((note, idx) => {
         const div = document.createElement('div');
-        div.className = 'note-item';
-        div.innerHTML = `<span class="note-text">${note}</span><button class="btn-icon" onclick="window.deleteNote(${songId},${idx})">✕</button>`;
+        if (editingNoteIdx === idx) {
+          div.className = 'note-item note-edit-row';
+          div.innerHTML = `
+            <input type="text" id="note-edit-input-${idx}" class="note-edit-input" value="${note.replace(/"/g,'&quot;')}" />
+            <button class="btn-secondary btn-sm" onclick="window.saveNoteEdit(${songId},${idx})">保存</button>
+            <button class="btn-icon" onclick="window.cancelNoteEdit(${songId})">✕</button>
+          `;
+        } else {
+          div.className = 'note-item';
+          div.innerHTML = `
+            <span class="note-text">${note}</span>
+            <button class="btn-icon note-edit-btn" onclick="window.editNote(${songId},${idx})">✏️</button>
+            <button class="btn-icon" onclick="window.deleteNote(${songId},${idx})">✕</button>
+          `;
+        }
         container.appendChild(div);
       });
+    }
+    function editNote(songId, idx) {
+      editingNoteIdx = idx;
+      renderNotes(songId);
+    }
+    function cancelNoteEdit(songId) {
+      editingNoteIdx = null;
+      renderNotes(songId);
+    }
+    function saveNoteEdit(songId, idx) {
+      const input = document.getElementById(`note-edit-input-${idx}`);
+      const text = input ? input.value.trim() : '';
+      if (!text) return;
+      state.songNotes[songId][idx] = text;
+      saveToFirebase('/songNotes', state.songNotes);
+      editingNoteIdx = null;
+      renderNotes(songId);
     }
     function addNote() {
       const input = document.getElementById('note-input');
@@ -1180,6 +1211,7 @@ export default function Home() {
     function deleteNote(songId, idx) {
       state.songNotes[songId].splice(idx, 1);
       saveToFirebase('/songNotes', state.songNotes);
+      editingNoteIdx = null;
       renderNotes(songId);
     }
 
@@ -1491,6 +1523,9 @@ export default function Home() {
     window.removeSongLink      = removeSongLink;
     window.togglePerformer    = togglePerformer;
     window.addNote            = addNote;
+    window.editNote           = editNote;
+    window.saveNoteEdit       = saveNoteEdit;
+    window.cancelNoteEdit     = cancelNoteEdit;
     window.deleteNote         = deleteNote;
     window.applySettings         = applySettings;
     window.addMemberRow       = addMemberRow;
@@ -1553,7 +1588,7 @@ export default function Home() {
         'toggleTask','addTask','openEditTask','updateTask','deleteTask',
         'toggleAccordion','addNews','openEditNews','updateNews','deleteNews','toggleRecentNews',
         'setAttendance','saveMemo','saveLateTime','openSongDetail','closeSongDetail','savePart',
-        'addNote','deleteNote','applySettings','addMemberRow','deleteMember',
+        'addNote','editNote','saveNoteEdit','cancelNoteEdit','deleteNote','applySettings','addMemberRow','deleteMember',
         'moveSong','addSongRow','deleteSong','addAttendEventRow','deleteAttendEvent',
         'saveLeader','togglePerformer','saveSongCenter','saveSongMic','saveSongStart','saveSongProgress',
         'addSongLink','editSongLink','saveSongLinkEdit','cancelSongLinkEdit','removeSongLink',

@@ -1107,6 +1107,9 @@ html, body {
   padding: 8px 10px;
 }
 .note-text { flex: 1; font-size: 13px; color: var(--text); font-weight: 600; }
+.note-edit-row { flex-wrap: wrap; background: var(--card-muted-bg); border-radius: 8px; padding: 6px; gap: 6px; }
+.note-edit-input { flex: 1; min-width: 0; padding: 6px 8px; border-radius: 8px; border: 1px solid var(--border); background: var(--input-bg); color: var(--text); font-size: 13px; }
+.note-edit-btn { font-size: 11px; padding: 2px 4px; }
 .note-add-row { display: flex; gap: 8px; }
 .note-add-row input {
   flex: 1;
