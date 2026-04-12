@@ -944,17 +944,16 @@ export default function Home() {
       const container = document.getElementById('song-links-container');
       if (!container) return;
       const links = state.songLinks[songId] || {};
+      // extra: null=URLのみ / 'date'=日付+URL / 'title'=タイトル+URL
       const categories = [
-        { key: 'practice',   label: '練習動画' },
-        { key: 'ref',        label: '参考動画' },
-        { key: 'past',       label: '過去動画' },
-        { key: 'formation',  label: 'フォーメーション' },
+        { key: 'formation', label: 'フォーメーション', extra: null  },
+        { key: 'ref',       label: '参考動画',         extra: 'title' },
+        { key: 'practice',  label: '練習動画',          extra: 'date'  },
       ];
       container.innerHTML = '';
-      categories.forEach(({ key, label }) => {
+      categories.forEach(({ key, label, extra }) => {
         const raw = links[key];
         const items = Array.isArray(raw) ? raw : (raw ? [raw] : []);
-        const isPractice = key === 'practice' || key === 'formation';
         const catDiv = document.createElement('div');
         catDiv.className = 'link-category';
         const labelEl = document.createElement('div');
@@ -962,14 +961,16 @@ export default function Home() {
         labelEl.textContent = label;
         catDiv.appendChild(labelEl);
         items.forEach((item, idx) => {
-          const url  = typeof item === 'object' ? (item.url || '') : item;
-          const date = typeof item === 'object' ? (item.date || '') : '';
+          const url   = typeof item === 'object' ? (item.url   || '') : item;
+          const date  = typeof item === 'object' ? (item.date  || '') : '';
+          const title = typeof item === 'object' ? (item.title || '') : '';
           const safeUrl = url.replace(/"/g, '&quot;');
-          const dateLabel = date ? (() => { const p = date.split('-'); return `<span class="link-date-badge">${parseInt(p[1])}/${parseInt(p[2])}</span>`; })() : '';
+          const dateBadge  = date  ? (() => { const p = date.split('-'); return `<span class="link-date-badge">${parseInt(p[1])}/${parseInt(p[2])}</span>`; })() : '';
+          const titleBadge = title ? `<span class="link-title-badge">${title.replace(/</g,'&lt;')}</span>` : '';
           const row = document.createElement('div');
           row.className = 'link-item-row';
           row.innerHTML = `
-            ${dateLabel}
+            ${dateBadge}${titleBadge}
             <a href="${safeUrl}" target="_blank" rel="noopener noreferrer" class="link-url">${url}</a>
             <button class="btn-icon link-del-btn" onclick="window.removeSongLink(${songId},'${key}',${idx})">✕</button>
           `;
@@ -977,12 +978,14 @@ export default function Home() {
         });
         const addRow = document.createElement('div');
         addRow.className = 'link-add-row';
-        addRow.innerHTML = isPractice
-          ? `<input type="date" id="link-date-${key}-${songId}" class="link-date-input" />
-             <input type="url" id="link-input-${key}-${songId}" class="link-input" placeholder="URLを入力..." />
-             <button class="btn-secondary btn-sm" onclick="window.addSongLink(${songId},'${key}')">追加</button>`
-          : `<input type="url" id="link-input-${key}-${songId}" class="link-input" placeholder="URLを入力..." />
-             <button class="btn-secondary btn-sm" onclick="window.addSongLink(${songId},'${key}')">追加</button>`;
+        const extraInput = extra === 'date'
+          ? `<input type="date" id="link-date-${key}-${songId}" class="link-date-input" />`
+          : extra === 'title'
+          ? `<input type="text" id="link-title-${key}-${songId}" class="link-title-input" placeholder="タイトル" />`
+          : '';
+        addRow.innerHTML = `${extraInput}
+          <input type="url" id="link-input-${key}-${songId}" class="link-input" placeholder="URLを入力..." />
+          <button class="btn-secondary btn-sm" onclick="window.addSongLink(${songId},'${key}')">追加</button>`;
         catDiv.appendChild(addRow);
         container.appendChild(catDiv);
       });
@@ -991,9 +994,11 @@ export default function Home() {
       const input = document.getElementById(`link-input-${key}-${songId}`);
       const url = input ? input.value.trim() : '';
       if (!url) return;
-      const dateInput = document.getElementById(`link-date-${key}-${songId}`);
-      const date = dateInput ? dateInput.value : '';
-      const entry = date ? { url, date } : url;
+      const dateInput  = document.getElementById(`link-date-${key}-${songId}`);
+      const titleInput = document.getElementById(`link-title-${key}-${songId}`);
+      const date  = dateInput  ? dateInput.value        : '';
+      const title = titleInput ? titleInput.value.trim(): '';
+      const entry = date ? { url, date } : title ? { url, title } : url;
       if (!state.songLinks[songId]) state.songLinks[songId] = {};
       const existing = state.songLinks[songId][key];
       if (Array.isArray(existing)) { existing.push(entry); }
