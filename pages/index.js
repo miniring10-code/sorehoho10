@@ -940,6 +940,7 @@ export default function Home() {
       saveToFirebase('/songProgress', state.songProgress);
       renderSetlist();
     }
+    let editingLink = null; // { songId, key, idx }
     function renderSongLinks(songId) {
       const container = document.getElementById('song-links-container');
       if (!container) return;
@@ -964,16 +965,33 @@ export default function Home() {
           const url   = typeof item === 'object' ? (item.url   || '') : item;
           const date  = typeof item === 'object' ? (item.date  || '') : '';
           const title = typeof item === 'object' ? (item.title || '') : '';
-          const safeUrl = url.replace(/"/g, '&quot;');
-          const dateBadge  = date  ? (() => { const p = date.split('-'); return `<span class="link-date-badge">${parseInt(p[1])}/${parseInt(p[2])}</span>`; })() : '';
-          const titleBadge = title ? `<span class="link-title-badge">${title.replace(/</g,'&lt;')}</span>` : '';
           const row = document.createElement('div');
-          row.className = 'link-item-row';
-          row.innerHTML = `
-            ${dateBadge}${titleBadge}
-            <a href="${safeUrl}" target="_blank" rel="noopener noreferrer" class="link-url">${url}</a>
-            <button class="btn-icon link-del-btn" onclick="window.removeSongLink(${songId},'${key}',${idx})">✕</button>
-          `;
+          const isEditing = editingLink && editingLink.songId === songId && editingLink.key === key && editingLink.idx === idx;
+          if (isEditing) {
+            row.className = 'link-edit-row';
+            const extraInput = extra === 'date'
+              ? `<input type="date" id="link-edit-date-${key}-${idx}" class="link-date-input" value="${date}" />`
+              : extra === 'title'
+              ? `<input type="text" id="link-edit-title-${key}-${idx}" class="link-title-input" placeholder="タイトル" value="${title.replace(/"/g,'&quot;')}" />`
+              : '';
+            row.innerHTML = `
+              ${extraInput}
+              <input type="url" id="link-edit-url-${key}-${idx}" class="link-input" value="${url.replace(/"/g,'&quot;')}" placeholder="URLを入力..." />
+              <button class="btn-secondary btn-sm" onclick="window.saveSongLinkEdit(${songId},'${key}',${idx})">保存</button>
+              <button class="btn-icon" onclick="window.cancelSongLinkEdit(${songId})">✕</button>
+            `;
+          } else {
+            row.className = 'link-item-row';
+            const safeUrl = url.replace(/"/g, '&quot;');
+            const dateBadge  = date  ? (() => { const p = date.split('-'); return `<span class="link-date-badge">${parseInt(p[1])}/${parseInt(p[2])}</span>`; })() : '';
+            const titleBadge = title ? `<span class="link-title-badge">${title.replace(/</g,'&lt;')}</span>` : '';
+            row.innerHTML = `
+              ${dateBadge}${titleBadge}
+              <a href="${safeUrl}" target="_blank" rel="noopener noreferrer" class="link-url">${url}</a>
+              <button class="btn-icon link-edit-btn" onclick="window.editSongLink(${songId},'${key}',${idx})">✏️</button>
+              <button class="btn-icon link-del-btn" onclick="window.removeSongLink(${songId},'${key}',${idx})">✕</button>
+            `;
+          }
           catDiv.appendChild(row);
         });
         const addRow = document.createElement('div');
@@ -1005,6 +1023,28 @@ export default function Home() {
       else if (existing) { state.songLinks[songId][key] = [existing, entry]; }
       else { state.songLinks[songId][key] = [entry]; }
       saveToFirebase('/songLinks', state.songLinks);
+      renderSongLinks(songId);
+    }
+    function editSongLink(songId, key, idx) {
+      editingLink = { songId, key, idx };
+      renderSongLinks(songId);
+    }
+    function cancelSongLinkEdit(songId) {
+      editingLink = null;
+      renderSongLinks(songId);
+    }
+    function saveSongLinkEdit(songId, key, idx) {
+      const urlInput   = document.getElementById(`link-edit-url-${key}-${idx}`);
+      const dateInput  = document.getElementById(`link-edit-date-${key}-${idx}`);
+      const titleInput = document.getElementById(`link-edit-title-${key}-${idx}`);
+      const url   = urlInput   ? urlInput.value.trim()   : '';
+      const date  = dateInput  ? dateInput.value         : '';
+      const title = titleInput ? titleInput.value.trim() : '';
+      if (!url) return;
+      const entry = date ? { url, date } : title ? { url, title } : url;
+      state.songLinks[songId][key][idx] = entry;
+      saveToFirebase('/songLinks', state.songLinks);
+      editingLink = null;
       renderSongLinks(songId);
     }
     function removeSongLink(songId, key, idx) {
@@ -1442,6 +1482,9 @@ export default function Home() {
     window.saveSongStart    = saveSongStart;
     window.saveSongProgress = saveSongProgress;
     window.addSongLink         = addSongLink;
+    window.editSongLink        = editSongLink;
+    window.saveSongLinkEdit    = saveSongLinkEdit;
+    window.cancelSongLinkEdit  = cancelSongLinkEdit;
     window.removeSongLink      = removeSongLink;
     window.togglePerformer    = togglePerformer;
     window.addNote            = addNote;
@@ -1509,7 +1552,8 @@ export default function Home() {
         'setAttendance','saveMemo','saveLateTime','openSongDetail','closeSongDetail','savePart',
         'addNote','deleteNote','applySettings','addMemberRow','deleteMember',
         'moveSong','addSongRow','deleteSong','addAttendEventRow','deleteAttendEvent',
-        'saveLeader','togglePerformer','saveSongCenter','saveSongMic','saveSongStart','saveSongProgress','addSongLink','removeSongLink',
+        'saveLeader','togglePerformer','saveSongCenter','saveSongMic','saveSongStart','saveSongProgress',
+        'addSongLink','editSongLink','saveSongLinkEdit','cancelSongLinkEdit','removeSongLink',
       ];
       fns.forEach(fn => { delete window[fn]; });
     };

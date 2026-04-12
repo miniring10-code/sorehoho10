@@ -2105,7 +2105,17 @@ td.selected-day .day-num {
   border-radius: 6px;
   background: #EFF6FF;
 }
-.link-del-btn { flex-shrink: 0; font-size: 11px; padding: 2px 6px; }
+.link-del-btn  { flex-shrink: 0; font-size: 11px; padding: 2px 6px; }
+.link-edit-btn { flex-shrink: 0; font-size: 11px; padding: 2px 4px; }
+.link-edit-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 6px;
+  padding: 6px;
+  background: var(--card-muted-bg);
+  border-radius: 8px;
+}
 .link-add-row {
   display: flex;
   flex-wrap: wrap;
