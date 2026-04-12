@@ -185,7 +185,6 @@ export default function Home() {
       songLinks:      {}, // { songId: { ref: [], past: [], formation: [] } }
       songMic:        {}, // { songId: 'hand'|'headset'|'both'|'' }
       songStart:      {}, // { songId: 'itatsuki'|'kyokusaki'|'' }
-      songPracticeDate: {}, // { songId: 'YYYY-MM-DD' }
       currentSongId: null,
     };
 
@@ -846,10 +845,6 @@ export default function Home() {
         const startBadge = start === 'itatsuki' ? '<span class="start-badge itatsuki">板付</span>'
           : start === 'kyokusaki' ? '<span class="start-badge kyokusaki">曲先</span>'
           : '';
-        const practiceDate = state.songPracticeDate[song.id] || '';
-        const practiceDateText = practiceDate
-          ? (() => { const p = practiceDate.split('-'); return `<span class="practice-date-badge">🗓 ${parseInt(p[1])}/${parseInt(p[2])}</span>`; })()
-          : '';
         const progress = state.songProgress[song.id] || '';
         const progressClass = progress === '振り入れ完' ? 'prog-done'
           : progress === 'ほぼ振り入れ完' ? 'prog-almost'
@@ -862,7 +857,7 @@ export default function Home() {
           <div class="song-info">
             <span class="song-title">${song.title}</span>
             <span class="song-artist">${song.artist}</span>
-            <div class="song-meta-row">${leadersText}${centerText}${startBadge}${practiceDateText}</div>
+            <div class="song-meta-row">${leadersText}${centerText}${startBadge}</div>
           </div>
           <div class="song-right">${micIcon}<span class="chevron">›</span></div>
         `;
@@ -888,7 +883,6 @@ export default function Home() {
       renderSongCenter(songId);
       renderSongMic(songId);
       renderSongStart(songId);
-      renderSongPracticeDate(songId);
       renderSongProgress(songId);
       renderSongLinks(songId);
       renderSongLeaders(songId);
@@ -935,16 +929,6 @@ export default function Home() {
       saveToFirebase('/songStart', state.songStart);
       renderSetlist();
     }
-    function renderSongPracticeDate(songId) {
-      const inp = document.getElementById('practice-date-input');
-      if (!inp) return;
-      inp.value = state.songPracticeDate[songId] || '';
-      inp.onchange = () => window.saveSongPracticeDate(songId, inp.value);
-    }
-    function saveSongPracticeDate(songId, value) {
-      state.songPracticeDate[songId] = value;
-      saveToFirebase('/songPracticeDate', state.songPracticeDate);
-    }
     function renderSongProgress(songId) {
       const sel = document.getElementById('progress-select');
       if (!sel) return;
@@ -969,18 +953,23 @@ export default function Home() {
       container.innerHTML = '';
       categories.forEach(({ key, label }) => {
         const raw = links[key];
-        const urls = Array.isArray(raw) ? raw : (raw ? [raw] : []);
+        const items = Array.isArray(raw) ? raw : (raw ? [raw] : []);
+        const isPractice = key === 'practice';
         const catDiv = document.createElement('div');
         catDiv.className = 'link-category';
         const labelEl = document.createElement('div');
         labelEl.className = 'link-cat-label';
         labelEl.textContent = label;
         catDiv.appendChild(labelEl);
-        urls.forEach((url, idx) => {
+        items.forEach((item, idx) => {
+          const url  = typeof item === 'object' ? (item.url || '') : item;
+          const date = typeof item === 'object' ? (item.date || '') : '';
           const safeUrl = url.replace(/"/g, '&quot;');
+          const dateLabel = date ? (() => { const p = date.split('-'); return `<span class="link-date-badge">${parseInt(p[1])}/${parseInt(p[2])}</span>`; })() : '';
           const row = document.createElement('div');
           row.className = 'link-item-row';
           row.innerHTML = `
+            ${dateLabel}
             <a href="${safeUrl}" target="_blank" rel="noopener noreferrer" class="link-url">${url}</a>
             <button class="btn-icon link-del-btn" onclick="window.removeSongLink(${songId},'${key}',${idx})">✕</button>
           `;
@@ -988,10 +977,12 @@ export default function Home() {
         });
         const addRow = document.createElement('div');
         addRow.className = 'link-add-row';
-        addRow.innerHTML = `
-          <input type="url" id="link-input-${key}-${songId}" class="link-input" placeholder="URLを入力..." />
-          <button class="btn-secondary btn-sm" onclick="window.addSongLink(${songId},'${key}')">追加</button>
-        `;
+        addRow.innerHTML = isPractice
+          ? `<input type="date" id="link-date-${key}-${songId}" class="link-date-input" />
+             <input type="url" id="link-input-${key}-${songId}" class="link-input" placeholder="URLを入力..." />
+             <button class="btn-secondary btn-sm" onclick="window.addSongLink(${songId},'${key}')">追加</button>`
+          : `<input type="url" id="link-input-${key}-${songId}" class="link-input" placeholder="URLを入力..." />
+             <button class="btn-secondary btn-sm" onclick="window.addSongLink(${songId},'${key}')">追加</button>`;
         catDiv.appendChild(addRow);
         container.appendChild(catDiv);
       });
@@ -1000,11 +991,14 @@ export default function Home() {
       const input = document.getElementById(`link-input-${key}-${songId}`);
       const url = input ? input.value.trim() : '';
       if (!url) return;
+      const dateInput = document.getElementById(`link-date-${key}-${songId}`);
+      const date = dateInput ? dateInput.value : '';
+      const entry = date ? { url, date } : url;
       if (!state.songLinks[songId]) state.songLinks[songId] = {};
       const existing = state.songLinks[songId][key];
-      if (Array.isArray(existing)) { existing.push(url); }
-      else if (existing) { state.songLinks[songId][key] = [existing, url]; }
-      else { state.songLinks[songId][key] = [url]; }
+      if (Array.isArray(existing)) { existing.push(entry); }
+      else if (existing) { state.songLinks[songId][key] = [existing, entry]; }
+      else { state.songLinks[songId][key] = [entry]; }
       saveToFirebase('/songLinks', state.songLinks);
       renderSongLinks(songId);
     }
@@ -1320,9 +1314,8 @@ export default function Home() {
         songCenters:     state.songCenters,
         songProgress:    state.songProgress,
         songLinks:       state.songLinks,
-        songMic:          state.songMic,
-        songStart:        state.songStart,
-        songPracticeDate: state.songPracticeDate,
+        songMic:   state.songMic,
+        songStart: state.songStart,
         songNotes:       state.songNotes,
         songLeaders:     state.songLeaders,
         songPerformers:  state.songPerformers,
@@ -1375,9 +1368,8 @@ export default function Home() {
       if (data.songCenters)  state.songCenters  = data.songCenters;
       if (data.songProgress) state.songProgress = data.songProgress;
       if (data.songLinks)    state.songLinks    = data.songLinks;
-      if (data.songMic)          state.songMic          = data.songMic;
-      if (data.songStart)        state.songStart        = data.songStart;
-      if (data.songPracticeDate) state.songPracticeDate = data.songPracticeDate;
+      if (data.songMic)   state.songMic   = data.songMic;
+      if (data.songStart) state.songStart = data.songStart;
 
       if (data.events)          state.events          = Object.values(data.events).map(e => ({ time: '', timeEnd: '', place: '', memo: '', ...e }));
       if (data.tasks)           state.tasks           = Object.values(data.tasks).map(t => ({ dueDate: '', ...t }));
@@ -1441,10 +1433,9 @@ export default function Home() {
     window.savePart           = savePart;
     window.saveLeader         = saveLeader;
     window.saveSongCenter      = saveSongCenter;
-    window.saveSongMic          = saveSongMic;
-    window.saveSongStart        = saveSongStart;
-    window.saveSongPracticeDate = saveSongPracticeDate;
-    window.saveSongProgress     = saveSongProgress;
+    window.saveSongMic      = saveSongMic;
+    window.saveSongStart    = saveSongStart;
+    window.saveSongProgress = saveSongProgress;
     window.addSongLink         = addSongLink;
     window.removeSongLink      = removeSongLink;
     window.togglePerformer    = togglePerformer;
@@ -1513,7 +1504,7 @@ export default function Home() {
         'setAttendance','saveMemo','saveLateTime','openSongDetail','closeSongDetail','savePart',
         'addNote','deleteNote','applySettings','addMemberRow','deleteMember',
         'moveSong','addSongRow','deleteSong','addAttendEventRow','deleteAttendEvent',
-        'saveLeader','togglePerformer','saveSongCenter','saveSongMic','saveSongStart','saveSongPracticeDate','saveSongProgress','addSongLink','removeSongLink',
+        'saveLeader','togglePerformer','saveSongCenter','saveSongMic','saveSongStart','saveSongProgress','addSongLink','removeSongLink',
       ];
       fns.forEach(fn => { delete window[fn]; });
     };
@@ -1760,10 +1751,6 @@ export default function Home() {
             <option value="itatsuki">板付</option>
             <option value="kyokusaki">曲先</option>
           </select>
-        </div>
-        <div className="card">
-          <div className="card-title">練習日</div>
-          <input type="date" id="practice-date-input" className="progress-select" />
         </div>
         <div className="card">
           <div className="card-title">曲責任者</div>
