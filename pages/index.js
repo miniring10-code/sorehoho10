@@ -1810,6 +1810,18 @@ export default function Home() {
           <span id="detail-song-title"></span>
         </div>
         <div className="card">
+          <div className="card-title">参考リンク</div>
+          <div id="song-links-container"></div>
+        </div>
+        <div className="card">
+          <div className="card-title">連絡事項</div>
+          <div className="notes-list" id="notes-list"></div>
+          <div className="note-add-row">
+            <input type="text" id="note-input" placeholder="連絡事項を追加..." />
+            <button className="btn-primary" onClick={() => window.addNote()}>追加</button>
+          </div>
+        </div>
+        <div className="card">
           <div className="card-title">進捗</div>
           <select id="progress-select" className="progress-select">
             <option value="未着手">未着手</option>
@@ -1842,18 +1854,6 @@ export default function Home() {
         <div className="card">
           <div className="card-title">曲責任者</div>
           <div id="leaders-row" className="leaders-row"></div>
-        </div>
-        <div className="card">
-          <div className="card-title">参考リンク</div>
-          <div id="song-links-container"></div>
-        </div>
-        <div className="card">
-          <div className="card-title">連絡事項</div>
-          <div className="notes-list" id="notes-list"></div>
-          <div className="note-add-row">
-            <input type="text" id="note-input" placeholder="連絡事項を追加..." />
-            <button className="btn-primary" onClick={() => window.addNote()}>追加</button>
-          </div>
         </div>
         <div className="card">
           <div className="card-title">パート・フォーメーション</div>
